@@ -9,8 +9,9 @@ llegue al contexto compartido. El nodo `compromised` intenta el ataque A3
 Proveedor (variables de entorno, nunca claves en el codigo):
 
     PowerShell:  $env:GOOGLE_API_KEY = "tu-clave"        (Gemini, por defecto)
-                 $env:TRUSTMAS_LLM = "ollama"            (Ollama local, opcional)
-    bash:        export GOOGLE_API_KEY="tu-clave"
+                  $env:TRUSTMAS_LLM = "ollama"            (Ollama local, opcional)
+    bash:        export GOOGLE_API_KEY="tu-clave"          (Gemini)
+                 TRUSTMAS_LLM=ollama OLLAMA_MODEL=llama3.2:3b python demo_orchestrator.py
 
 Ejecutar con:
     python demo_orchestrator.py

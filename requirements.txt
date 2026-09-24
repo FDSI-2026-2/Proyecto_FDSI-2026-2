@@ -1,10 +1,11 @@
 pynacl>=1.6
 networkx>=3.6
 pytest>=9.0
+pytest-cov>=7.0
 langgraph>=0.2
 langchain-core>=0.3
 langchain-google-genai>=2.0
 numpy>=2.0
 pandas>=2.2
-# Opcional: agentes con un modelo local via Ollama (TRUSTMAS_LLM=ollama)
-# langchain-ollama>=0.2
+# Agentes con un modelo local via Ollama (TRUSTMAS_LLM=ollama).
+langchain-ollama>=0.3
