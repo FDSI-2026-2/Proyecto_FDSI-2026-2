@@ -46,10 +46,10 @@ from ..audit import AuditLog
 from ..bus import MessageBus, RoutingResult
 from ..config import DefenseConfig
 from ..identity import IdentityRegistry, KeyPair, NonceStore, issue_capability_token, sign_message
-from ..judge import HeuristicJudge, LLMJudge, estimate_tokens
+from ..judge import ContentJudge, HeuristicJudge, LLMJudge, estimate_tokens
 from ..models import AgentRole, Message, PolicyDecision, ProvenanceSource
 from ..provenance import tag_provenance
-from ..quarantine_model import LLMQuarantineModel, RuleBasedQuarantineModel, extract_claim
+from ..quarantine_model import LLMQuarantineModel, QuarantineModel, RuleBasedQuarantineModel, extract_claim
 from ..trust import AdaptiveThreshold, GraphAnomalyDetector, TrustEngine
 from .attacks import (
     POISONED_DOC,
@@ -199,9 +199,10 @@ class Episode:
     def __init__(self, cfg: EpisodeConfig, llm=None) -> None:
         self.cfg = cfg
         self.llm = llm
-        self.rng = random.Random(cfg.seed)
+        # Pseudorandomness is intentional for reproducible simulations, not cryptography.
+        self.rng = random.Random(cfg.seed)  # nosec B311
         self.profile: ModelProfile = get_profile(cfg.model)
-        self.task = generate_task(random.Random(cfg.seed * 7919 + 17), cfg.seed)
+        self.task = generate_task(random.Random(cfg.seed * 7919 + 17), cfg.seed)  # nosec B311
 
         n_mal = 0 if cfg.attack == "ninguno" else cfg.n_malicious
         self.malicious_ids = tuple(f"infiltrado_{i + 1}" for i in range(n_mal))
@@ -209,6 +210,8 @@ class Episode:
 
         self.registry = IdentityRegistry()
         detector = GraphAnomalyDetector(expected_edges=self.topology.edges)
+        judge: ContentJudge
+        quarantine_model: QuarantineModel
         if cfg.llm_defenses:
             judge = LLMJudge(SimulatedJudgeLLM(), fallback=HeuristicJudge())
             quarantine_model = LLMQuarantineModel(SimulatedQuarantineLLM(), fallback=RuleBasedQuarantineModel())
@@ -519,6 +522,8 @@ class Episode:
                         rng=self.rng,
                         last_decisions=list(agent.last_decisions),
                     )
+                    if agent.strategy is None:
+                        raise RuntimeError("un agente malicioso debe tener una estrategia")
                     outgoing = agent.strategy.plan(ctx)
                 else:
                     outgoing = self._honest_outgoing(agent, round_index)

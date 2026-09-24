@@ -257,6 +257,8 @@ def build_mesh_graph(nodes: list[AgentNode], rounds: int = 2):
             else:
                 graph.add_edge(previous, name)
         previous = names
+    if previous is None:
+        raise RuntimeError("la malla no genero nodos")
     graph.add_edge(previous, END)
     return graph.compile()
 

@@ -142,7 +142,8 @@ def verify_message(
     # al emisor. Una falsificacion a nombre de un agente honesto no debe
     # castigar la reputacion de ese agente (si no, el atacante lo incrimina).
     verify_key = registry.verify_key_for(message.sender_id)
-    assert verify_key is not None
+    if verify_key is None:
+        return VerificationResult(False, "emisor sin clave de verificacion registrada")
     try:
         verify_key.verify(message.signing_payload(), message.signature)
     except CryptoError:  # firma incorrecta, vacia o de longitud invalida

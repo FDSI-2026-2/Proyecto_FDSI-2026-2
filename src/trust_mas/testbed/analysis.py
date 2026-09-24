@@ -79,11 +79,11 @@ def paired_reduction_ci(
 
     point = reduction(cfg, base)
     rng = np.random.default_rng(seed)
-    samples = []
+    sample_values = []
     for _ in range(n_boot):
         idx = rng.integers(0, len(cfg), len(cfg))
-        samples.append(reduction(cfg[idx], base[idx]))
-    samples = np.array([s for s in samples if not np.isnan(s)])
+        sample_values.append(reduction(cfg[idx], base[idx]))
+    samples = np.asarray([s for s in sample_values if not np.isnan(s)], dtype=float)
     if samples.size == 0:
         return point, float("nan"), float("nan")
     return point, float(np.quantile(samples, 0.025)), float(np.quantile(samples, 0.975))
@@ -176,7 +176,7 @@ def analyze(
     rows = []
     for config in configs:
         sub = static[static.defense == config]
-        asr, asr_lo, asr_hi = bootstrap_ci(sub.attack_success)
+        attack_success_rate, asr_lo, asr_hi = bootstrap_ci(sub.attack_success)
         red, red_lo, red_hi = paired_reduction_ci(static, config) if config != BASELINE else (0.0, 0.0, 0.0)
         det = _detection(sub)
         c_sub = clean[clean.defense == config]
@@ -186,7 +186,7 @@ def analyze(
         rows.append(
             {
                 "defense": config,
-                "asr": asr,
+                "asr": attack_success_rate,
                 "asr_lo": asr_lo,
                 "asr_hi": asr_hi,
                 "reduccion_asr": red,
@@ -214,13 +214,13 @@ def analyze(
         for config in configs:
             sub = factorial[(factorial.attack == attack) & (factorial.defense == config)]
             det = _detection(sub)
-            asr, lo, hi = bootstrap_ci(sub.attack_success)
+            attack_success_rate, lo, hi = bootstrap_ci(sub.attack_success)
             attack_rows.append(
                 {
                     "attack": attack,
                     "nombre": ATTACK_NAMES[attack],
                     "defense": config,
-                    "asr": asr,
+                    "asr": attack_success_rate,
                     "asr_lo": lo,
                     "asr_hi": hi,
                     "recall": det["recall"],

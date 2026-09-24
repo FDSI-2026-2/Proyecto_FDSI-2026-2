@@ -289,10 +289,8 @@ def compose_action(agent, action: str, conv: str):
 def test_token_sin_firma_valida_no_autoriza_accion():
     bus, _, compromised = build_bus_with_keys()
     unsigned = CapabilityToken("orchestrator", "compromised", frozenset({"transfer_funds"}), 0, time.time() + 3600)
-    bus.register_capability_token("compromised", unsigned)
-    result = bus.route(compose_action(compromised, "transfer_funds", "t1"))
-    assert result.decision == PolicyDecision.REJECT
-    assert any("firma de token invalida" in r for r in result.reasons)
+    with pytest.raises(ValueError, match="firma de token invalida"):
+        bus.register_capability_token("compromised", unsigned)
 
 
 def test_token_de_otro_agente_no_autoriza_accion():
@@ -300,10 +298,8 @@ def test_token_de_otro_agente_no_autoriza_accion():
     token_worker = issue_capability_token(
         keys["orchestrator"], "orchestrator", "worker", frozenset({"transfer_funds"}), 0
     )
-    bus.register_capability_token("compromised", token_worker)  # token robado
-    result = bus.route(compose_action(compromised, "transfer_funds", "t2"))
-    assert result.decision == PolicyDecision.REJECT
-    assert any("pertenece a 'worker'" in r for r in result.reasons)
+    with pytest.raises(ValueError, match="emitido para otro agente"):
+        bus.register_capability_token("compromised", token_worker)  # token robado
 
 
 def test_token_autoemitido_no_autoriza_accion():
@@ -311,8 +307,8 @@ def test_token_autoemitido_no_autoriza_accion():
     self_issued = issue_capability_token(
         keys["compromised"], "compromised", "compromised", frozenset({"transfer_funds"}), 0
     )
-    bus.register_capability_token("compromised", self_issued)
-    assert bus.route(compose_action(compromised, "transfer_funds", "t3")).decision == PolicyDecision.REJECT
+    with pytest.raises(ValueError, match="sin autoridad para emitir tokens"):
+        bus.register_capability_token("compromised", self_issued)
 
 
 def test_token_valido_autoriza_accion():

@@ -14,9 +14,11 @@ WORKDIR /app
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY src/ src/
-COPY tests/ tests/
-COPY docs/ docs/
-COPY demo.py demo_escenas.py demo_orchestrator.py run_experiment.py README.md ./
+RUN groupadd --system trustmas && useradd --system --gid trustmas --create-home trustmas && chown trustmas:trustmas /app
+COPY --chown=trustmas:trustmas src/ src/
+COPY --chown=trustmas:trustmas tests/ tests/
+COPY --chown=trustmas:trustmas docs/ docs/
+COPY --chown=trustmas:trustmas demo.py demo_escenas.py demo_orchestrator.py run_experiment.py README.md ./
 
+USER trustmas
 CMD ["python", "-m", "pytest", "tests", "-q"]

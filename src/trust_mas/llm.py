@@ -47,8 +47,9 @@ def build_chat_model(provider: Optional[str] = None, model: Optional[str] = None
                 "Para usar Ollama instala el paquete opcional: pip install langchain-ollama "
                 "(y ten un servidor Ollama corriendo con el modelo descargado)."
             ) from exc
-        kwargs = {"model": model or os.environ.get("OLLAMA_MODEL", DEFAULT_OLLAMA_MODEL), "temperature": temperature}
-        if os.environ.get("OLLAMA_HOST"):
-            kwargs["base_url"] = os.environ["OLLAMA_HOST"]
-        return ChatOllama(**kwargs)
+        model_name = model or os.environ.get("OLLAMA_MODEL", DEFAULT_OLLAMA_MODEL)
+        host = os.environ.get("OLLAMA_HOST")
+        if host:
+            return ChatOllama(model=model_name, temperature=temperature, base_url=host)
+        return ChatOllama(model=model_name, temperature=temperature)
     raise LLMConfigError(f"proveedor LLM desconocido: {provider!r} (opciones: {PROVIDERS})")

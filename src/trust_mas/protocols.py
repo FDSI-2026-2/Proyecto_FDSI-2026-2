@@ -76,16 +76,26 @@ def from_a2a(payload: dict | str) -> Message:
     (fail-closed: sin firma no hay mensaje)."""
     if isinstance(payload, str):
         payload = json.loads(payload)
+    if not isinstance(payload, dict):
+        raise ValueError("sobre A2A invalido: se esperaba un objeto JSON")
     if payload.get("method") != A2A_METHOD:
         raise ValueError(f"metodo A2A no soportado: {payload.get('method')!r}")
-    msg = payload["params"]["message"]
+    params = payload.get("params")
+    if not isinstance(params, dict) or not isinstance(params.get("message"), dict):
+        raise ValueError("sobre A2A sin mensaje valido")
+    msg = params["message"]
     meta = (msg.get("metadata") or {}).get("trustmas")
-    if not meta:
+    if not isinstance(meta, dict):
         raise ValueError("sobre A2A sin metadatos trustmas: no se puede verificar identidad")
-    body = "".join(part.get("text", "") for part in msg.get("parts", []) if part.get("kind") == "text")
+    parts = msg.get("parts", [])
+    if not isinstance(parts, list):
+        raise ValueError("sobre A2A con partes invalidas")
+    body = "".join(part.get("text", "") for part in parts if isinstance(part, dict) and part.get("kind") == "text")
     provenance = None
     if meta.get("provenance"):
         p = meta["provenance"]
+        if not isinstance(p, dict):
+            raise ValueError("procedencia A2A invalida")
         provenance = ProvenanceTag(
             source=ProvenanceSource(p["source"]),
             origin_id=p["origin_id"],

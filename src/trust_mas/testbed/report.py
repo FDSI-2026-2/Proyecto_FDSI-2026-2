@@ -10,7 +10,7 @@ import html
 import math
 from datetime import datetime
 from pathlib import Path
-from typing import Optional
+from typing import Callable, Optional
 
 import pandas as pd
 
@@ -47,7 +47,7 @@ def _num(value: float, digits: int = 2) -> str:
     return f"{value:.{digits}f}"
 
 
-def _table(df: pd.DataFrame, columns: list[tuple[str, str, callable]]) -> str:
+def _table(df: pd.DataFrame, columns: list[tuple[str, str, Callable[..., str]]]) -> str:
     head = "".join(f"<th>{_e(label)}</th>" for _, label, _ in columns)
     body = []
     for row in df.to_dict("records"):
