@@ -31,3 +31,4 @@ results/
 .DS_Store
 Thumbs.db
 desktop.ini
+coverage.xml

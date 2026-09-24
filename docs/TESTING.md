@@ -1,0 +1,147 @@
+# Pruebas y Operación Local
+
+Esta guía no requiere claves de proveedores externos. Las instrucciones usan
+un entorno virtual local y un modelo Ollama opcional.
+
+## Preparación
+
+```bash
+python -m venv .venv
+. .venv/bin/activate
+pip install -r requirements.txt
+```
+
+En PowerShell, activa el entorno con `.venv\Scripts\Activate.ps1`.
+
+## Pruebas de código
+
+Ejecuta la suite y genera cobertura:
+
+```bash
+python -m pytest tests -q --cov=src/trust_mas --cov-report=term-missing --cov-report=xml:coverage.xml
+```
+
+La prueba debe finalizar sin fallos. `coverage.xml` se usa después por
+SonarQube Cloud; no contiene secretos.
+
+Para revisar los controles de seguridad que protegen la comunicación:
+
+```bash
+python -m pytest tests/test_identity.py tests/test_provenance.py tests/test_bus_integration.py -q
+```
+
+Estas pruebas verifican firma, rol, replay, procedencia alterada, capacidades
+manipuladas y delegación atenuada.
+
+## Pruebas de uso
+
+La demostración determinista no usa un LLM ni red:
+
+```bash
+python demo.py
+```
+
+Comprueba manualmente que el resultado incluya lo siguiente:
+
+1. El tráfico normal termina en `ACCEPT`.
+2. La suplantación de rol termina en `REJECT`.
+3. El reenvío del mismo nonce termina en `REJECT`.
+4. El contenido externo con una acción no autorizada termina en `REJECT` o
+   `QUARANTINE`.
+5. La auditoría final informa una cadena íntegra.
+
+La demo es una prueba de comportamiento, no una medición experimental. Para
+evaluar las hipótesis del proyecto aún faltan las topologías no lineales y el
+banco factorial A1-A5.
+
+## Modelo Local con Ollama
+
+Instala Ollama desde su instalador oficial y, en una terminal, inicia el
+servicio y descarga un modelo pequeño:
+
+```bash
+ollama serve
+ollama pull llama3.2:3b
+```
+
+En otra terminal, con el entorno virtual activo, ejecuta el orquestador:
+
+```bash
+TRUST_MAS_LLM_PROVIDER=ollama OLLAMA_MODEL=llama3.2:3b python demo_orchestrator.py
+```
+
+En PowerShell:
+
+```powershell
+$env:TRUST_MAS_LLM_PROVIDER = "ollama"
+$env:OLLAMA_MODEL = "llama3.2:3b"
+python demo_orchestrator.py
+```
+
+Este flujo usa un LLM real alojado localmente y conserva las capas A, B y C en
+cada arista de LangGraph. No ejecuta transferencias, correo ni otras
+herramientas externas: `action` sigue siendo metadato validado por el bus.
+No conectes herramientas con efectos reales hasta implementar un gateway de
+herramientas que obligue a pasar por `MessageBus.route()`.
+
+Si Ollama no está disponible, la suite y `demo.py` siguen siendo totalmente
+locales y no requieren modelo alguno.
+
+## SonarQube Local
+
+La instancia local usa Docker. En Linux, verifica primero que Docker responda
+sin permisos elevados; si no responde, inicia una sesión nueva después de que
+un administrador te conceda acceso al grupo `docker`.
+
+```bash
+docker run -d --name trust-mas-sonarqube -p 9000:9000 sonarqube:community
+```
+
+Abre `http://localhost:9000`, cambia la contraseña inicial de `admin`, crea un
+proyecto local y genera un token de análisis. Después de generar
+`coverage.xml`, ejecuta el scanner desde una instalación local de
+`sonar-scanner`:
+
+```bash
+SONAR_HOST_URL=http://localhost:9000 SONAR_TOKEN=tu_token sonar-scanner \
+  -Dsonar.projectKey=trust-mas-local
+```
+
+Detén y elimina la instancia cuando termines:
+
+```bash
+docker stop trust-mas-sonarqube
+docker rm trust-mas-sonarqube
+```
+
+## SonarQube Cloud en GitHub
+
+El workflow `.github/workflows/sonar.yml` ejecuta tests, crea `coverage.xml` y
+analiza cada push y pull request. Antes del primer push:
+
+1. Inicia sesión con GitHub en SonarQube Cloud e importa el repositorio.
+2. En GitHub, abre `Settings > Secrets and variables > Actions`.
+3. Crea el secreto `SONAR_TOKEN` con un token generado en SonarQube Cloud.
+4. Crea las variables `SONAR_PROJECT_KEY` y `SONAR_ORGANIZATION` con los
+   valores mostrados por SonarQube Cloud.
+5. Haz push y revisa la anotación del workflow y el panel del proyecto.
+
+El token solo vive en GitHub Secrets. No debe aparecer en `sonar-project.properties`,
+en archivos `.env`, commits ni capturas de pantalla. Los repositorios privados
+pueden requerir un plan de SonarQube Cloud compatible.
+
+## Escáneres Complementarios
+
+Ejecuta estos comandos en un entorno de desarrollo con las herramientas
+instaladas:
+
+```bash
+bandit -r src demo.py demo_orchestrator.py
+semgrep scan --config auto src demo.py demo_orchestrator.py
+pip-audit -r requirements.txt
+ruff check src tests demo.py demo_orchestrator.py
+mypy src --ignore-missing-imports
+```
+
+Bandit, Semgrep y `pip-audit` complementan SonarQube: no sustituyen las
+pruebas de protocolo ni las revisiones de diseño de seguridad.

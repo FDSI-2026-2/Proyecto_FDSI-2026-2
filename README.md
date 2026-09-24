@@ -471,8 +471,8 @@ python run_experiment.py --solo-analisis          # rehace tablas y panel desde 
 python demo_orchestrator.py --topologia estrella   # lineal | estrella | jerarquica | malla
 python run_experiment.py --llm gemini --llm-corridas 2
 
-# Tests (no requieren clave ni red)
-python -m pytest tests -q
+# Tests (no requieren clave ni red) y cobertura para SonarQube Cloud
+python -m pytest tests -q --cov=src/trust_mas --cov-report=term-missing --cov-report=xml:coverage.xml
 
 # Docker / DVC
 docker build -t trust-mas . && docker run --rm trust-mas
@@ -483,6 +483,9 @@ Variables de entorno del LLM: `TRUSTMAS_LLM` (`gemini` | `ollama`),
 `GOOGLE_API_KEY`, `GEMINI_MODEL` (por defecto `gemini-2.0-flash`; cámbiala si
 ese modelo ya no está disponible), `OLLAMA_MODEL`, `OLLAMA_HOST`. Ollama
 requiere `pip install langchain-ollama`.
+
+La guía de pruebas de código, uso, Ollama y SonarQube está en
+[`docs/TESTING.md`](docs/TESTING.md).
 
 ## Tests
 
