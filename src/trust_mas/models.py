@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import time
 from dataclasses import dataclass, field
 from enum import Enum
@@ -77,33 +78,30 @@ class Message:
     provenance: Optional[ProvenanceTag] = None
 
     def signing_payload(self) -> bytes:
-        """Serialización canónica de los campos cubiertos por la firma.
+        """Serialización canónica de todos los datos que decide la política.
 
         Incluye la etiqueta de procedencia declarada por el emisor para que no
         pueda alterarse en tránsito; aun así el bus nunca confía en ella tal
-        cual (ver `MessageBus._effective_provenance`). NO incluye `signature`
-        (es el resultado de firmar esto).
+        cual (ver `MessageBus._effective_provenance`). No incluye `signature`
+        porque es el resultado de firmar este contenido.
         """
-        if self.provenance is None:
-            provenance_part = ""
-        else:
-            provenance_part = "|".join(
-                [
-                    self.provenance.source.value,
-                    self.provenance.origin_id,
-                    "1" if self.provenance.trusted else "0",
-                    ",".join(self.provenance.chain),
-                ]
-            )
-        parts = [
-            self.sender_id,
-            self.recipient_id,
-            self.declared_role.value,
-            self.body,
-            self.conversation_digest,
-            self.nonce,
-            f"{self.timestamp:.6f}",
-            self.action or "",
-            provenance_part,
-        ]
-        return "\x1f".join(parts).encode("utf-8")
+        provenance = None
+        if self.provenance is not None:
+            provenance = {
+                "source": self.provenance.source.value,
+                "origin_id": self.provenance.origin_id,
+                "trusted": self.provenance.trusted,
+                "chain": list(self.provenance.chain),
+            }
+        payload = {
+            "sender_id": self.sender_id,
+            "recipient_id": self.recipient_id,
+            "declared_role": self.declared_role.value,
+            "body": self.body,
+            "conversation_digest": self.conversation_digest,
+            "nonce": self.nonce,
+            "timestamp": f"{self.timestamp:.6f}",
+            "action": self.action,
+            "provenance": provenance,
+        }
+        return json.dumps(payload, ensure_ascii=True, separators=(",", ":"), sort_keys=True).encode("utf-8")

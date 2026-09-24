@@ -26,9 +26,16 @@ def test_documento_externo_no_confiable_requiere_cuarentena():
 
 
 def test_agente_confiable_no_requiere_cuarentena():
-    tag = tag_provenance(ProvenanceSource.AGENT, "orchestrator")
+    tag = tag_provenance(ProvenanceSource.AGENT, "a1")
     verdict = QuarantineEngine().evaluate(make_message(provenance=tag))
     assert not verdict.requires_quarantine
+
+
+def test_origen_de_agente_distinto_al_emisor_requiere_cuarentena():
+    tag = tag_provenance(ProvenanceSource.AGENT, "orchestrator")
+    verdict = QuarantineEngine().evaluate(make_message(provenance=tag))
+    assert verdict.requires_quarantine
+    assert "no coincide" in verdict.reason
 
 
 def test_mensaje_sin_etiqueta_se_trata_como_no_confiable():

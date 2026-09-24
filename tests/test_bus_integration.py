@@ -1,5 +1,8 @@
+import copy
 import hashlib
 import time
+
+import pytest
 
 from trust_mas.agent import SimulatedAgent
 from trust_mas.bus import MessageBus
@@ -65,6 +68,18 @@ def test_replay_es_rechazado():
     assert second.decision == PolicyDecision.REJECT
 
 
+def test_firma_invalida_no_consumen_nonce_del_mensaje_legitimo():
+    bus, _, _, compromised = build_bus()
+    legitimate = compromised.compose(
+        "worker", "estado ok", digest("replay-dos"), provenance=tag_provenance(ProvenanceSource.AGENT, "compromised")
+    )
+    forged = copy.copy(legitimate)
+    forged.body = "mensaje alterado sin una firma valida"
+
+    assert bus.route(forged).decision == PolicyDecision.REJECT
+    assert bus.route(legitimate).decision == PolicyDecision.ACCEPT
+
+
 def test_accion_sin_capacidad_es_rechazada():
     bus, _, _, compromised = build_bus()
     msg = compromised.compose(
@@ -107,6 +122,44 @@ def test_firma_falsificada_es_rechazada():
     msg.signature = b"\x00" * len(msg.signature)  # firma corrupta/falsificada
     result = bus.route(msg)
     assert result.decision == PolicyDecision.REJECT
+
+
+def test_procedencia_alterada_despues_de_firmar_se_rechaza():
+    bus, _, _, compromised = build_bus()
+    message = compromised.compose(
+        "worker",
+        "contenido externo",
+        digest("prov-falsa"),
+        provenance=tag_provenance(ProvenanceSource.EXTERNAL_DOC, "documento.pdf"),
+    )
+    message.provenance = tag_provenance(ProvenanceSource.AGENT, "compromised")
+
+    assert bus.route(message).decision == PolicyDecision.REJECT
+
+
+def test_token_alterado_despues_del_registro_no_autoriza_acciones():
+    bus, _, _, compromised = build_bus()
+    token = bus._capability_tokens["compromised"]
+    token.actions = frozenset({"read_file", "transfer_funds"})
+    message = compromised.compose(
+        "worker",
+        "ejecutar transferencia",
+        digest("token-alterado"),
+        action="transfer_funds",
+        provenance=tag_provenance(ProvenanceSource.AGENT, "compromised"),
+    )
+
+    assert bus.route(message).decision == PolicyDecision.REJECT
+
+
+def test_token_emitido_para_otro_agente_no_se_registra():
+    bus, orchestrator, _, _ = build_bus()
+    token = issue_capability_token(
+        orchestrator.keypair, "orchestrator", "worker", frozenset({"read_file"}), max_delegation_depth=0
+    )
+
+    with pytest.raises(ValueError, match="otro agente"):
+        bus.register_capability_token("compromised", token)
 
 
 def test_sin_token_de_capacidad_mensaje_sin_accion_es_aceptado():

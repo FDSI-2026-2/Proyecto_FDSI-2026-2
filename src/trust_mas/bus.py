@@ -87,6 +87,11 @@ class MessageBus:
 
     # ------------------------------------------------------------------ API
     def register_capability_token(self, agent_id: str, token: CapabilityToken) -> None:
+        verdict = verify_capability_token(self.registry, token)
+        if not verdict.ok:
+            raise ValueError(f"token de capacidad invalido: {verdict.reason}")
+        if token.subject != agent_id:
+            raise ValueError("token de capacidad emitido para otro agente")
         self._capability_tokens[agent_id] = token
 
     def capability_token(self, agent_id: str) -> Optional[CapabilityToken]:

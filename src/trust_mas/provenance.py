@@ -35,6 +35,11 @@ class QuarantineEngine:
         if tag is None:
             return ProvenanceVerdict(True, "sin etiqueta de procedencia: se trata como no confiable")
 
+        if tag.source == ProvenanceSource.AGENT and tag.origin_id != message.sender_id:
+            return ProvenanceVerdict(
+                True, "la procedencia de agente no coincide con el emisor autenticado"
+            )
+
         if not tag.trusted:
             return ProvenanceVerdict(
                 True, f"origen no confiable ({tag.source.value}:{tag.origin_id}): requiere cuarentena"

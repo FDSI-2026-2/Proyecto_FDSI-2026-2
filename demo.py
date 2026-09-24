@@ -46,6 +46,11 @@ def print_result(step_title: str, message, result) -> None:
         print(f"    - {reason}")
 
 
+def require(condition: bool, message: str) -> None:
+    if not condition:
+        raise RuntimeError(message)
+
+
 def main() -> None:
     registry = IdentityRegistry()
     audit_log = AuditLog()
@@ -112,7 +117,7 @@ def main() -> None:
     )
     result = bus.route(fake_role_msg)
     print_result("[2] Suplantacion de rol (worker_c dice ser orchestrator)", fake_role_msg, result)
-    assert result.decision == PolicyDecision.REJECT, "la Capa A deberia rechazar el rol falso"
+    require(result.decision == PolicyDecision.REJECT, "la Capa A deberia rechazar el rol falso")
 
     # === Fase 3: repeticion de un mensaje legitimo capturado (Capa A, anti-replay) ===
     print("\n### FASE 3 -- repeticion de mensaje capturado (replay) ###")
@@ -127,7 +132,7 @@ def main() -> None:
 
     result_replay = bus.route(legit_msg)  # se reenvia el mismo objeto (mismo nonce)
     print_result("[3.2] Mismo mensaje reenviado (replay)", legit_msg, result_replay)
-    assert result_replay.decision == PolicyDecision.REJECT, "la Capa A deberia bloquear el replay"
+    require(result_replay.decision == PolicyDecision.REJECT, "la Capa A deberia bloquear el replay")
 
     # === Fase 4: Ataque A2 -- inyeccion via contenido no confiable + accion sin capacidad ===
     print("\n### FASE 4 -- ataque A2 (inyeccion): instrucciones desde un documento externo ###")
@@ -144,7 +149,7 @@ def main() -> None:
     )
     result = bus.route(injected_msg)
     print_result("[4] Contenido de documento externo reenviado como propio", injected_msg, result)
-    assert result.decision in (PolicyDecision.QUARANTINE, PolicyDecision.REJECT)
+    require(result.decision in (PolicyDecision.QUARANTINE, PolicyDecision.REJECT), "la inyeccion debe contenerse")
 
     # Se asume que el contexto de worker_c se saneo tras la cuarentena: la fase 5
     # muestra el efecto de su historial, sin la contaminacion de por medio.
@@ -165,7 +170,7 @@ def main() -> None:
         )
         result = bus.route(msg)
         print_result(f"[5.{i}] Mensaje aparentemente normal de worker_c tras historial sospechoso", msg, result)
-        assert result.decision != PolicyDecision.ACCEPT, "el historial sospechoso deberia restarle peso"
+        require(result.decision != PolicyDecision.ACCEPT, "el historial sospechoso deberia restarle peso")
 
     # === Resumen final ===
     print("\n" + "=" * 78)

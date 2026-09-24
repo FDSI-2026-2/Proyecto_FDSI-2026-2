@@ -229,6 +229,7 @@ def verify_capability_token(
     token: CapabilityToken,
     now: Optional[float] = None,
     root_roles: frozenset[AgentRole] = frozenset({AgentRole.ORCHESTRATOR}),
+    expected_subject: Optional[str] = None,
 ) -> VerificationResult:
     """Verifica el token y toda su cadena de delegación hasta la raíz.
 
@@ -239,8 +240,14 @@ def verify_capability_token(
     mismo un token con `transfer_funds`.
     """
     now = time.time() if now is None else now
+    if expected_subject is not None and token.subject != expected_subject:
+        return VerificationResult(False, "token de capacidad emitido para otro agente")
     current: Optional[CapabilityToken] = token
+    visited: set[int] = set()
     while current is not None:
+        if id(current) in visited:
+            return VerificationResult(False, "cadena de delegacion ciclica")
+        visited.add(id(current))
         if current.is_expired(now):
             return VerificationResult(False, "token de capacidad expirado")
         verify_key = registry.verify_key_for(current.issuer)

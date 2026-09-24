@@ -102,6 +102,21 @@ def test_atenuacion_valida_reduce_alcance():
     assert child.max_delegation_depth == 0
 
 
+def test_token_delegado_verifica_su_cadena_y_titular():
+    registry = IdentityRegistry()
+    issuer_kp = KeyPair.generate()
+    delegator_kp = KeyPair.generate()
+    registry.register_agent("orchestrator", issuer_kp.verify_key_bytes(), AgentRole.ORCHESTRATOR)
+    registry.register_agent("worker_a", delegator_kp.verify_key_bytes(), AgentRole.WORKER)
+    parent = issue_capability_token(
+        issuer_kp, "orchestrator", "worker_a", frozenset({"read_file"}), max_delegation_depth=1
+    )
+    child = attenuate_capability_token(parent, delegator_kp, "worker_a", "worker_b", frozenset({"read_file"}))
+
+    result = verify_capability_token(registry, child, expected_subject="worker_b")
+    assert result.ok, result.reason
+
+
 def test_atenuacion_agotada_falla():
     issuer_kp = KeyPair.generate()
     parent = issue_capability_token(
