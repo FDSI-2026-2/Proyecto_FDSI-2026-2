@@ -17,7 +17,7 @@ se rechaza, y la decisión queda registrada en un log de auditoría inmutable.
 ## Índice
 
 - [Estado frente a la propuesta](#estado-frente-a-la-propuesta)
-- [Resultados](#resultados)
+- [Estado de evidencia](#estado-de-evidencia)
 - [Arquitectura general](#arquitectura-general)
 - [Estructura del repositorio](#estructura-del-repositorio)
 - [Capa A — Identidad](#capa-a--identidad)
@@ -59,76 +59,23 @@ se rechaza, y la decisión queda registrada en un log de auditoría inmutable.
 | Modelado de amenazas MAESTRO × OWASP y matriz de trazabilidad (P6) | `docs/modelo_de_amenazas.md` |
 | Orquestación LangGraph · modelos de frontera (Gemini) y locales (Ollama) | `orchestrator.py`, `llm.py` |
 | Protocolos MCP y A2A | `protocols.py` (adaptadores) |
-| Reproducibilidad: Docker, DVC | `Dockerfile`, `dvc.yaml` |
+| Reproducibilidad: Docker, CI y archivos de dependencias | `Dockerfile`, `.github/workflows/ci.yml`, `requirements-*.txt` |
 
 Lo que **no** está (y por qué) se resume en
 [Limitaciones y trabajo futuro](#limitaciones-y-trabajo-futuro).
 
-## Resultados
+## Estado de evidencia
 
-Preset `completo`: 37 440 episodios factoriales (30 corridas por celda), 9 360
-de la curva y 8 640 de costo. Unos 4 minutos en 11 procesos. Se regeneran con
-`python run_experiment.py --preset completo`; el detalle está en
-`results/panel.html` y `results/tablas/`. **Los perfiles de modelo son
-simulados**: las cifras miden el mecanismo, no a un LLM concreto.
+El repositorio contiene el banco de pruebas, sus métricas y los comandos para
+generar artefactos locales. No publica cifras experimentales como resultados
+vigentes: deben regenerarse con el código, la configuración y el entorno que
+se vayan a reportar. Los perfiles de `testbed/profiles.py` son parámetros de
+simulación calibrables, no mediciones de un proveedor LLM.
 
-**Metas de la propuesta (A + B + C frente a la línea base):**
-
-| Meta | Resultado | Objetivo | |
-|---|---|---|---|
-| Reducción del éxito del ataque (A1–A5) | 88,9 % [IC 95 %: 87,6 – 90,1] | ≥ 70 % | ✓ |
-| F1 identificando agentes comprometidos | 0,78 | ≥ 0,85 | ✗ |
-| Tasa de falsos positivos | 0,7 % | ≤ 5 % | ✓ |
-| Caída de exactitud sin ataque | −1,9 pts (mejora) | ≤ 5 pts | ✓ |
-| Caída de la utilidad de colaboración | −17,6 % (mejora) | ≤ 10 % | ✓ |
-| Sobrecarga de tokens (juez y cuarentena LLM) | 13,8 % | ≤ 25 % | ✓ |
-| Sobrecarga de latencia p95 (juez y cuarentena LLM) | 20,7 % | ≤ 20 % | ✗ (por poco) |
-
-**Ablación (SP2): éxito del ataque por configuración**, promedio de A1–A5:
-sin defensas 69,1 % · A 43,8 % · B 49,9 % · C 12,6 % · A+B 24,6 % · A+C 7,6 % ·
-B+C 13,5 % · **A+B+C 7,7 %**.
-
-**Qué frena a qué** (éxito del ataque):
-
-| Ataque | Sin defensas | Solo A | Solo B | Solo C | A+B+C |
-|---|---|---|---|---|---|
-| A1 desinformación persuasiva | 40 % | 40 % | 40 % | 24 % | 24 % |
-| A2 inyección autorreplicante | 100 % | 100 % | 4 % | 4 % | 4 % |
-| A3 suplantación de rol | 100 % | 4 % | 100 % | 13 % | 3 % |
-| A4 manipulación de consenso | 100 % | 69 % | 100 % | 18 % | 4 % |
-| A5 baja intensidad | 5 % | 5 % | 5 % | 4 % | 4 % |
-| Adaptativo | 100 % | 100 % | 100 % | 27 % | 3 % |
-
-(El ~4 % residual es el error propio del equipo cuando coincide con la
-respuesta que buscaba el atacante.)
-
-**Hallazgos:**
-
-- **H1 soportada: autenticar no es confiar.** La Capa A sola no mueve la
-  desinformación persuasiva (40 % → 40 %).
-- **H4 no soportada: las capas son redundantes, no superaditivas.** Cada
-  ataque lo frena más de una capa (A2: B y C; A3: A y C), así que la suma de
-  los efectos aislados (1,01) supera el efecto combinado (0,61). El valor de la
-  combinación está en la cobertura: ninguna capa sola baja de 12 %, y el
-  adversario adaptativo solo se contiene con A + C (3 %).
-- **H5 soportada: la baja intensidad degrada la Capa C.** Recall 0,11 frente
-  a A5 (1,00 para A2, A3 y A4). A5 casi no logra su objetivo (5 %), pero pasa
-  desapercibido. A1 también se identifica mal (recall 0,15): es lo que baja el
-  F1 por debajo de la meta.
-- **La Capa C sin Capa A incrimina a honestos.** Frente a los votos sybil
-  (A4), solo C aísla por error al 78 % de los agentes honestos; con A + C, al
-  0,7 %. La regla de
-  "solo se castiga lo atribuible" necesita la identidad para funcionar.
-- **La Capa B no ve la inyección que escribe un agente deshonesto por su
-  cuenta.** B protege contra el agente secuestrado por un documento, pero con
-  A + B el adversario adaptativo gana usando A2 (100 %); solo C lo frena.
-- **SP1:** con dos infiltrados la malla es la topología más expuesta, tanto
-  sin defensas (81 %) como con A + B + C (15 %).
-- **SP3:** A4 se detecta en la primera ronda, A3 en la segunda y A2 hacia la
-  tercera.
-- **SP5:** subir el umbral base de 0,5 a 0,8 baja el éxito del ataque de 8,7 %
-  a 5,7 %, a cambio de 6,7 pts de exactitud sin ataque y una tasa de falsos
-  positivos del 13 %. El umbral por defecto (0,5) está en el codo de la curva.
+Ejecuta `python run_experiment.py --preset completo` para generar
+`results/resumen.md`, `results/panel.html` y `results/tablas/`. Los artefactos
+generados están ignorados por Git para evitar presentar resultados no
+reproducidos como evidencia actual.
 
 ## Arquitectura general
 
@@ -206,13 +153,15 @@ Puntos clave del flujo:
 ```
 Proyecto_FDSI/
 ├── README.md
-├── requirements.txt · Dockerfile · dvc.yaml · .gitignore
+├── requirements*.txt · pyproject.toml · Dockerfile · .gitignore
 ├── demo.py                  # recorrido mensaje a mensaje (texto fijo)
 ├── demo_escenas.py          # las 7 escenas de la propuesta (guion determinista)
 ├── demo_orchestrator.py     # LangGraph + LLM real (Gemini u Ollama), 4 topologías
 ├── run_experiment.py        # banco de pruebas: factorial, curva, costo, panel
 ├── docs/
-│   └── modelo_de_amenazas.md    # MAESTRO x OWASP, matriz de trazabilidad (P6)
+│   ├── modelo_de_amenazas.md    # MAESTRO x OWASP, matriz de trazabilidad (P6)
+│   ├── TESTING.md               # instalación, pruebas y operación local
+│   └── PENDIENTES.md            # mejoras y evidencia pendiente
 ├── src/trust_mas/
 │   ├── models.py            # Message, ProvenanceTag, CapabilityToken, enums
 │   ├── identity.py          # Capa A: claves, registro, nonces, tokens y su cadena
@@ -226,7 +175,9 @@ Proyecto_FDSI/
 │   ├── agent.py             # agente que compone y firma mensajes
 │   ├── orchestrator.py      # nodos LangGraph y las 4 topologías
 │   ├── protocols.py         # adaptadores A2A (message/send) y MCP (tools/call)
-│   ├── llm.py               # construcción del chat model (Gemini / Ollama)
+│   ├── ports.py             # contrato TextGenerator del núcleo
+│   ├── adapters/langchain.py # adaptador LangChain de infraestructura
+│   ├── llm.py               # selección de proveedor Gemini / Ollama
 │   └── testbed/
 │       ├── tasks.py         # tareas con verdad de referencia
 │       ├── profiles.py      # perfiles de modelo base (simulados, calibrables)
@@ -237,7 +188,7 @@ Proyecto_FDSI/
 │       ├── experiment.py    # diseño factorial y ejecución en paralelo
 │       ├── analysis.py      # métricas, IC 95 %, hipótesis, metas
 │       └── report.py        # panel HTML
-└── tests/                   # 156 tests (ver sección Tests)
+└── tests/                   # pruebas unitarias, integración y adaptadores
 ```
 
 ---
@@ -352,9 +303,10 @@ cada entrada se persiste en JSONL.
 
 ## Orquestador LangGraph
 
-`AgentNode` (`orchestrator.py`) es un agente respaldado por un LLM real
-(`.invoke(prompt) -> .content`: `ChatGoogleGenerativeAI`, `ChatOllama` o un
-doble de prueba). Cada salida se firma y pasa por `bus.route()` antes de
+`AgentNode` (`orchestrator.py`) depende del puerto propio
+`TextGenerator.complete(prompt) -> str`. Gemini y Ollama se conectan mediante
+un adaptador de infraestructura; LangChain no forma parte del núcleo. Cada
+salida se firma y pasa por `bus.route()` antes de
 escribirse en el estado compartido, el canal de contaminación típico de
 AutoGen/LangGraph:
 
@@ -452,7 +404,18 @@ comparación adaptativo frente al mejor ataque estático (SP4).
 ## Instalación y uso
 
 ```bash
-pip install -r requirements.txt
+python -m venv .venv
+. .venv/bin/activate
+
+# Núcleo y pruebas
+python -m pip install -r requirements-test.txt
+
+# Herramientas de calidad locales (opcional)
+python -m pip install -r requirements-dev.txt
+
+# Un proveedor LLM, solo si se va a usar
+python -m pip install -r requirements-gemini.txt
+# o: python -m pip install -r requirements-ollama.txt
 
 # Recorrido mensaje a mensaje con texto fijo (sin LLM)
 python demo.py
@@ -474,15 +437,15 @@ python run_experiment.py --llm gemini --llm-corridas 2
 # Tests (no requieren clave ni red) y cobertura para SonarQube Cloud
 python -m pytest tests -q --cov=src/trust_mas --cov-report=term-missing --cov-report=xml:coverage.xml
 
-# Docker / DVC
+# Docker
 docker build -t trust-mas . && docker run --rm trust-mas
-dvc repro
 ```
 
 Variables de entorno del LLM: `TRUSTMAS_LLM` (`gemini` | `ollama`),
 `GOOGLE_API_KEY`, `GEMINI_MODEL` (por defecto `gemini-2.0-flash`; cámbiala si
 ese modelo ya no está disponible), `OLLAMA_MODEL`, `OLLAMA_HOST`. Ollama
-requiere `pip install langchain-ollama`.
+requiere `pip install -r requirements-ollama.txt`; Gemini requiere
+`pip install -r requirements-gemini.txt` y `GOOGLE_API_KEY`.
 
 La guía de pruebas de código, uso, Ollama y SonarQube está en
 [`docs/TESTING.md`](docs/TESTING.md).
@@ -524,19 +487,18 @@ tests/test_demos.py                  las demos corren y cumplen su guion
 - **CORROBORATE es casi neutro para la reputación** (+0,02): pedir
   verificación no es evidencia de malicia.
 - **El log guarda el hash del contenido, no el contenido.**
+- **El núcleo conoce un puerto LLM, no LangChain ni un proveedor.** Los
+  adaptadores convierten la respuesta del proveedor a texto en el borde.
 - **Se descartó escalar la validación cruzada por la confianza declarada**: sube
   el recall frente a A1 pero no baja su éxito y dispara los falsos positivos.
 
 ## Limitaciones y trabajo futuro
 
-- **Perfiles de modelo simulados.** Las cifras del preset `completo` miden el
-  mecanismo con perfiles calibrables, no a un LLM concreto; la comparación
-  con modelos reales (`--llm`) está implementada pero requiere clave o un
-  servidor Ollama y presupuesto de llamadas.
-- **A1 y A5 siguen abiertos.** La desinformación persuasiva sin marcadores y
-  el ataque de baja intensidad casi no se detectan: son los resultados
-  negativos que la propuesta anticipaba (H1, H5). El juez LLM es la vía
-  prevista para A1.
+- **Perfiles de modelo simulados.** La comparación con modelos reales (`--llm`)
+  requiere una clave de Gemini o un servidor Ollama y presupuesto de llamadas.
+- **A1 y A5 requieren validación empírica.** La desinformación persuasiva sin
+  marcadores y la baja intensidad deben evaluarse con resultados regenerados;
+  el juez LLM es una vía prevista para A1.
 - **No se integró AutoGen**: el mecanismo es el mismo que en LangGraph (el bus
   entre el agente y el historial compartido); queda como adaptador pendiente.
 - **Sin observabilidad externa** (Langfuse / OpenTelemetry): el registro de
@@ -551,3 +513,4 @@ tests/test_demos.py                  las demos corren y cumplen su guion
   memoria o en un JSONL local.
 - Ver también `docs/modelo_de_amenazas.md` (amenazas mitigadas, parciales y
   abiertas).
+- El listado priorizado de trabajo pendiente está en `docs/PENDIENTES.md`.

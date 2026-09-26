@@ -12,9 +12,10 @@ Producto **P6** de la propuesta. Cada amenaza del alcance se traza a:
 - el perfil de ataque del banco de pruebas que la ejercita (A1–A5);
 - el control de TRUST-MAS que la mitiga y la evidencia (tests y experimentos).
 
-El estado (mitigada / parcial / abierta) resume la evidencia del banco de
-pruebas. Las cifras concretas salen de `results/resumen.md` y
-`results/panel.html`, que se regeneran con `python run_experiment.py`.
+El estado (mitigada / parcial / abierta) resume controles implementados y
+pruebas automatizadas. Las conclusiones experimentales deben derivarse de una
+ejecucion reproducida de `python run_experiment.py`; sus artefactos generados
+no se versionan como resultados vigentes.
 
 ## Supuestos del adversario
 
@@ -55,7 +56,7 @@ pruebas. Las cifras concretas salen de `results/resumen.md` y
 | Amenaza | MAESTRO | OWASP | Motivo |
 |---|---|---|---|
 | Envenenamiento del modelo base o de sus datos de entrenamiento | L1, L2 | LLM04 | Fuera del alcance de la propuesta |
-| Cadena de suministro (dependencias, modelos de terceros) | L4 | LLM03 | Seguridad de infraestructura |
+| Cadena de suministro de codigo y dependencias | L4 | LLM03 | La CI audita dependencias, secretos, imagen y genera SBOM; los modelos de terceros siguen fuera del alcance experimental |
 | Compromiso del bus, del registro o del host | L4 | — | Se asume una base de cómputo confiable |
 | Debilidades de embeddings / RAG | L2 | LLM08 | No hay recuperación vectorial en el sistema |
 

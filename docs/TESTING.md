@@ -1,160 +1,108 @@
-# Pruebas y Operación Local
+# Pruebas y Operacion Local
 
-Esta guía es independiente del sistema operativo. Solo requiere Python y usa
-un entorno virtual local; Ollama y Docker son opcionales.
+La suite sin red funciona con Python 3.11 o 3.12. Docker y los proveedores LLM son opcionales.
 
-## Preparación
+## Preparacion
 
 ```bash
 python -m venv .venv
 . .venv/bin/activate
-pip install -r requirements.txt
+python -m pip install -r requirements-test.txt
 ```
 
-En PowerShell, activa el entorno con `.venv\Scripts\Activate.ps1` y usa el
-mismo comando `python -m pip install -r requirements.txt`.
+En PowerShell, activa el entorno con `.venv\Scripts\Activate.ps1`.
 
-## Pruebas de código
-
-Ejecuta la suite y genera cobertura:
+Instala las herramientas de calidad solo si las vas a ejecutar localmente:
 
 ```bash
-python -m pytest tests -q --cov=src/trust_mas --cov-report=term-missing --cov-report=xml:coverage.xml
+python -m pip install -r requirements-dev.txt
 ```
 
-La prueba debe finalizar sin fallos. `coverage.xml` se usa después por
-SonarQube Cloud; no contiene secretos.
-
-Para revisar los controles de seguridad que protegen la comunicación:
+Los proveedores son extras separados del nucleo:
 
 ```bash
-python -m pytest tests/test_identity.py tests/test_provenance.py tests/test_bus_integration.py -q
+python -m pip install -r requirements-gemini.txt
+# o
+python -m pip install -r requirements-ollama.txt
 ```
 
-Estas pruebas verifican firma, rol, replay, procedencia alterada, capacidades
-manipuladas y delegación atenuada.
+## Pruebas
 
-## Pruebas de uso
+```bash
+python -m pytest tests -q --cov=src/trust_mas --cov-report=term-missing --cov-report=xml:coverage.xml --cov-fail-under=90
+```
 
-La demostración determinista no usa un LLM ni red:
+La suite no requiere una clave ni acceso a red. Cubre identidad, procedencia,
+confianza, auditoria, protocolos, topologias, banco de pruebas y el adaptador
+del puerto `TextGenerator`.
+
+Para probar manualmente el recorrido determinista:
 
 ```bash
 python demo.py
+python demo_escenas.py
 ```
 
-Comprueba manualmente que el resultado incluya lo siguiente:
+El trafico normal debe terminar en `ACCEPT`; una suplantacion o un replay debe
+terminar en `REJECT`; y la auditoria final debe informar una cadena integra.
 
-1. El tráfico normal termina en `ACCEPT`.
-2. La suplantación de rol termina en `REJECT`.
-3. El reenvío del mismo nonce termina en `REJECT`.
-4. El contenido externo con una acción no autorizada termina en `REJECT` o
-   `QUARANTINE`.
-5. La auditoría final informa una cadena íntegra.
+## Calidad y Seguridad
 
-La demo es una prueba de comportamiento, no una medición experimental. Para
-evaluar las hipótesis del proyecto aún faltan las topologías no lineales y el
-banco factorial A1-A5.
+Con `requirements-dev.txt` instalado, la comprobacion equivalente a la CI es:
+
+```bash
+ruff format --check .
+ruff check .
+mypy src
+bandit -q -r src
+semgrep --config=p/security-audit --error src
+pip-audit -r requirements.txt
+pip-audit -r requirements-gemini.txt
+pip-audit -r requirements-ollama.txt
+pre-commit run --all-files
+```
+
+Instala los hooks una vez por clon con `pre-commit install`.
+
+La CI ejecuta ademas Gitleaks, una matriz de pruebas para Python 3.11/3.12,
+Docker, Trivy y genera un SBOM CycloneDX de las dependencias resueltas.
+
+## Docker
+
+```bash
+docker build --tag trust-mas:local .
+docker run --rm trust-mas:local
+```
+
+La imagen usa Python 3.11 y un usuario sin privilegios; ejecuta la suite de
+pruebas como comando por defecto.
 
 ## Modelo Local con Ollama
 
-Instala Ollama desde su instalador oficial para tu sistema operativo. Usa tres
-terminales distintas: una para el servicio, otra para descargar el modelo y
-otra para ejecutar el proyecto.
-
-Terminal 1:
-```bash
-ollama serve
-```
-
-Terminal 2:
-```bash
-ollama pull llama3.2:3b
-```
-
-Terminal 3, con el entorno virtual activo:
+Instala y arranca Ollama conforme a su documentacion oficial. Luego descarga
+un modelo y ejecuta el orquestador desde el entorno virtual:
 
 ```bash
-TRUSTMAS_LLM=ollama OLLAMA_MODEL=llama3.2:3b python demo_orchestrator.py
+ollama pull llama3.1
+TRUSTMAS_LLM=ollama OLLAMA_MODEL=llama3.1 python demo_orchestrator.py
 ```
 
-En PowerShell:
+`OLLAMA_HOST` permite apuntar a un servidor remoto. El proveedor se adapta a
+`TextGenerator`; el nucleo no depende de LangChain ni de la API de Ollama.
 
-```powershell
-$env:TRUSTMAS_LLM = "ollama"
-$env:OLLAMA_MODEL = "llama3.2:3b"
-python demo_orchestrator.py
-```
-
-Este flujo usa un LLM real alojado localmente y conserva las capas A, B y C en
-cada arista de LangGraph. No ejecuta transferencias, correo ni otras
-herramientas externas: `action` sigue siendo metadato validado por el bus.
-No conectes herramientas con efectos reales hasta implementar un gateway de
-herramientas que obligue a pasar por `MessageBus.route()`.
-
-Si Ollama no está disponible, la suite y `demo.py` siguen siendo totalmente
-locales y no requieren modelo alguno.
-
-## SonarQube Local
-
-La instancia local usa Docker. Verifica primero que el comando `docker ps`
-funcione con tu usuario. La instalación y permisos de Docker dependen del
-sistema operativo; sigue la documentación oficial de Docker para tu plataforma.
+## Gemini
 
 ```bash
-docker run -d --name trust-mas-sonarqube -p 9000:9000 sonarqube:community
+export GOOGLE_API_KEY=tu-clave
+TRUSTMAS_LLM=gemini python demo_orchestrator.py
 ```
 
-Abre `http://localhost:9000`, cambia la contraseña inicial de `admin`, crea un
-proyecto local y genera un token de análisis. Después de generar
-`coverage.xml`, ejecuta el scanner en un contenedor, sin instalar
-`sonar-scanner` en el sistema:
+No guardes la clave en archivos versionados. Usa GitHub Secrets para los
+workflows y revoca cualquier token publicado accidentalmente.
 
-```bash
-docker run --rm --network host \
-  -e SONAR_HOST_URL=http://localhost:9000 \
-  -e SONAR_TOKEN=tu_token \
-  -v "$PWD:/usr/src" \
-  sonarsource/sonar-scanner-cli \
-  -Dsonar.projectKey=trust-mas-local
-```
+## SonarQube Cloud
 
-Detén y elimina la instancia cuando termines:
-
-```bash
-docker stop trust-mas-sonarqube
-docker rm trust-mas-sonarqube
-```
-
-## SonarQube Cloud en GitHub
-
-El workflow `.github/workflows/sonar.yml` ejecuta tests y crea `coverage.xml`
-en cada push y pull request. El paso de SonarQube Cloud se omite hasta que
-configures los tres valores siguientes; después se ejecuta automáticamente.
-Antes del primer análisis:
-
-1. Inicia sesión con GitHub en SonarQube Cloud e importa el repositorio.
-2. En GitHub, abre `Settings > Secrets and variables > Actions`.
-3. Crea el secreto `SONAR_TOKEN` con un token generado en SonarQube Cloud.
-4. Crea las variables `SONAR_PROJECT_KEY` y `SONAR_ORGANIZATION` con los
-   valores mostrados por SonarQube Cloud.
-5. Haz push y revisa la anotación del workflow y el panel del proyecto.
-
-El token solo vive en GitHub Secrets. No debe aparecer en `sonar-project.properties`,
-en archivos `.env`, commits ni capturas de pantalla. Los repositorios privados
-pueden requerir un plan de SonarQube Cloud compatible.
-
-## Escáneres Complementarios
-
-Ejecuta estos comandos en un entorno de desarrollo con las herramientas
-instaladas:
-
-```bash
-bandit -r src demo.py demo_orchestrator.py
-semgrep scan --config auto src demo.py demo_orchestrator.py
-pip-audit -r requirements.txt
-ruff check src tests demo.py demo_orchestrator.py
-mypy src --ignore-missing-imports
-```
-
-Bandit, Semgrep y `pip-audit` complementan SonarQube: no sustituyen las
-pruebas de protocolo ni las revisiones de diseño de seguridad.
+`.github/workflows/sonar.yml` publica cobertura en cada push y pull request.
+El analisis de SonarQube Cloud es condicional hasta configurar `SONAR_TOKEN`,
+`SONAR_PROJECT_KEY` y `SONAR_ORGANIZATION` en GitHub Actions. El token debe
+existir solo como secreto del repositorio.
