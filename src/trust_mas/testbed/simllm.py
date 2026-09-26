@@ -1,17 +1,12 @@
-"""Chat models simulados (deterministas, sin red) para el banco de pruebas.
+"""Generadores simulados (deterministas, sin red) para el banco de pruebas.
 
-Cumplen el mismo protocolo que `ChatGoogleGenerativeAI`/`ChatOllama`
-(`.invoke(prompt) -> objeto con .content`). Sirven para medir la
-sobrecarga de tokens y latencia de un juez LLM y de un modelo en cuarentena
-LLM sin pagar llamadas reales: la calidad del juicio es la del juez
-heurístico, pero el costo contabilizado es el de una llamada de verdad.
+Cumplen `TextGenerator` y permiten medir la sobrecarga modelada de defensas
+LLM sin pagar llamadas reales.
 """
 
 from __future__ import annotations
 
 import re
-from types import SimpleNamespace
-
 from ..judge import HeuristicJudge
 from ..quarantine_model import RuleBasedQuarantineModel
 
@@ -28,12 +23,12 @@ class SimulatedJudgeLLM:
         self._judge = HeuristicJudge()
         self.calls = 0
 
-    def invoke(self, prompt: str):
+    def complete(self, prompt: str) -> str:
         self.calls += 1
         verdict = self._judge.judge(_extract_body(prompt))
         risk = min(1.0, verdict.penalty * 2)
         cats = ", ".join(verdict.categories) or "ninguna"
-        return SimpleNamespace(content=f"RIESGO: {risk:.2f} | CATEGORIAS: {cats}")
+        return f"RIESGO: {risk:.2f} | CATEGORIAS: {cats}"
 
 
 class SimulatedQuarantineLLM:
@@ -41,9 +36,9 @@ class SimulatedQuarantineLLM:
         self._rules = RuleBasedQuarantineModel()
         self.calls = 0
 
-    def invoke(self, prompt: str):
+    def complete(self, prompt: str) -> str:
         self.calls += 1
         sanitized = self._rules.sanitize(_extract_body(prompt))
         claim = sanitized.claim or "NINGUNA"
         conf = f"{sanitized.confidence:.2f}" if sanitized.confidence is not None else "NINGUNA"
-        return SimpleNamespace(content=f"RESPUESTA: {claim} | CONFIANZA: {conf}")
+        return f"RESPUESTA: {claim} | CONFIANZA: {conf}"

@@ -1,10 +1,4 @@
-"""Tests del orquestador real (LangGraph). No llaman a ningun LLM de verdad:
-se inyecta un `FakeLLM` con el mismo duck type que `ChatGoogleGenerativeAI`
-(`.invoke(prompt) -> objeto con atributo .content`), asi que corren sin
-GOOGLE_API_KEY y sin red.
-"""
-
-from types import SimpleNamespace
+"""Tests del orquestador real (LangGraph) con un puerto LLM simulado."""
 
 from trust_mas.agent import SimulatedAgent
 from trust_mas.audit import AuditLog
@@ -21,9 +15,8 @@ class FakeLLM:
     def __init__(self, responses: list[str]) -> None:
         self._responses = list(responses)
 
-    def invoke(self, prompt: str):
-        text = self._responses.pop(0)
-        return SimpleNamespace(content=text)
+    def complete(self, prompt: str) -> str:
+        return self._responses.pop(0)
 
 
 def build_bus() -> tuple[MessageBus, IdentityRegistry, dict[str, KeyPair]]:

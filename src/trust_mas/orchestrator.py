@@ -29,11 +29,12 @@ from __future__ import annotations
 import hashlib
 import operator
 from dataclasses import dataclass
-from typing import Annotated, Optional, Protocol, Sequence, TypedDict
+from typing import Annotated, Optional, Sequence, TypedDict
 
 from .agent import SimulatedAgent
 from .bus import MessageBus
 from .models import AgentRole, PolicyDecision, ProvenanceSource
+from .ports import TextGenerator
 from .provenance import tag_provenance
 
 # Decisiones que dejan pasar el contenido (DEGRADE con peso reducido).
@@ -41,16 +42,6 @@ PROPAGATING_DECISIONS = (PolicyDecision.ACCEPT, PolicyDecision.DEGRADE)
 DECISION_WEIGHT = {PolicyDecision.ACCEPT: 1.0, PolicyDecision.DEGRADE: 0.5}
 QUARANTINED_DATA_WEIGHT = 0.2
 TOPOLOGIES = ("lineal", "estrella", "jerarquica", "malla")
-
-
-class ChatModel(Protocol):
-    """Duck type minimo compatible con los chat models de LangChain
-    (`ChatGoogleGenerativeAI`, `ChatOllama`, etc.) y con dobles de prueba:
-    basta con exponer `.invoke(prompt) -> objeto con atributo .content`.
-    """
-
-    def invoke(self, prompt: str):  # pragma: no cover - protocolo
-        ...
 
 
 def _latest_round(current: int, update: int) -> int:
@@ -98,7 +89,7 @@ class AgentNode:
     """
 
     agent: SimulatedAgent
-    llm: ChatModel
+    llm: TextGenerator
     system_prompt: str
     recipient_id: str
     bus: MessageBus
@@ -109,10 +100,7 @@ class AgentNode:
 
     def __call__(self, state: GraphState) -> dict:
         prompt = f"{self.system_prompt}\n\nContexto de la conversacion hasta ahora:\n{_render_context(state)}\n\nTu respuesta:"
-        response = self.llm.invoke(prompt)
-        body = getattr(response, "content", str(response))
-        if not isinstance(body, str):
-            body = str(body)
+        body = self.llm.complete(prompt)
 
         provenance = tag_provenance(self.provenance_source, self.agent.agent_id, trusted=self.provenance_trusted)
         message = self.agent.compose(

@@ -33,7 +33,7 @@ from trust_mas.audit import AuditLog
 from trust_mas.bus import MessageBus
 from trust_mas.identity import IdentityRegistry, KeyPair, issue_capability_token
 from trust_mas.models import AgentRole, ProvenanceSource
-from trust_mas.llm import LLMConfigError, build_chat_model
+from trust_mas.llm import LLMConfigError, build_text_generator
 from trust_mas.orchestrator import TOPOLOGIES, AgentNode, build_graph, initial_state
 from trust_mas.trust import TrustEngine
 
@@ -45,7 +45,7 @@ def main() -> None:
     parser.add_argument("--topologia", choices=TOPOLOGIES, default="lineal")
     args = parser.parse_args()
     try:
-        llm = build_chat_model()
+        llm = build_text_generator()
     except LLMConfigError as exc:
         raise SystemExit(str(exc)) from None
 

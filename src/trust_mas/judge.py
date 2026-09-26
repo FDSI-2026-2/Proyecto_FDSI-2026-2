@@ -15,6 +15,8 @@ import unicodedata
 from dataclasses import dataclass, field
 from typing import Protocol
 
+from .ports import TextGenerator
+
 
 @dataclass
 class JudgeVerdict:
@@ -146,7 +148,7 @@ class LLMJudge:
     (fail-safe: nunca queda sin señal de contenido).
     """
 
-    def __init__(self, llm, fallback: ContentJudge | None = None, cache_size: int = 512) -> None:
+    def __init__(self, llm: TextGenerator, fallback: ContentJudge | None = None, cache_size: int = 512) -> None:
         self.llm = llm
         self.fallback = fallback or HeuristicJudge()
         # Un agente suele enviar el mismo cuerpo a varios destinatarios: se
@@ -166,8 +168,7 @@ class LLMJudge:
 
     def _judge_uncached(self, body: str) -> JudgeVerdict:
         prompt = JUDGE_PROMPT.format(body=body)
-        response = self.llm.invoke(prompt)
-        text = str(getattr(response, "content", response))
+        text = self.llm.complete(prompt)
         tokens = estimate_tokens(prompt) + estimate_tokens(text)
 
         risk_match = _RISK_RE.search(text)

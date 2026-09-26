@@ -1,5 +1,3 @@
-from types import SimpleNamespace
-
 from trust_mas.config import DefenseConfig, ablation_configs
 from trust_mas.judge import HeuristicJudge, LLMJudge, normalize
 from trust_mas.quarantine_model import LLMQuarantineModel, RuleBasedQuarantineModel, extract_claim
@@ -10,9 +8,9 @@ class ScriptedLLM:
         self.reply = reply
         self.calls = 0
 
-    def invoke(self, prompt: str):
+    def complete(self, prompt: str) -> str:
         self.calls += 1
-        return SimpleNamespace(content=self.reply)
+        return self.reply
 
 
 # ------------------------------------------------------------------ juez

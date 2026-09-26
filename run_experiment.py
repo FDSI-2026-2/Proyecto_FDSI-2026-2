@@ -46,11 +46,11 @@ def main() -> None:
     out: Path = args.out
     out.mkdir(parents=True, exist_ok=True)
     if args.llm:
-        from trust_mas.llm import LLMConfigError, build_chat_model
+        from trust_mas.llm import LLMConfigError, build_text_generator
         from trust_mas.testbed.experiment import run_llm_experiment
 
         try:
-            llm = build_chat_model(args.llm)
+            llm = build_text_generator(args.llm)
         except LLMConfigError as exc:
             raise SystemExit(str(exc)) from None
         print(f"== llm ({args.llm}) ==", flush=True)

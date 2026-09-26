@@ -48,6 +48,7 @@ from ..config import DefenseConfig
 from ..identity import IdentityRegistry, KeyPair, NonceStore, issue_capability_token, sign_message
 from ..judge import ContentJudge, HeuristicJudge, LLMJudge, estimate_tokens
 from ..models import AgentRole, Message, PolicyDecision, ProvenanceSource
+from ..ports import TextGenerator
 from ..provenance import tag_provenance
 from ..quarantine_model import LLMQuarantineModel, QuarantineModel, RuleBasedQuarantineModel, extract_claim
 from ..trust import AdaptiveThreshold, GraphAnomalyDetector, TrustEngine
@@ -196,7 +197,7 @@ def _sample_latency(rng: random.Random, mean_ms: float) -> float:
 
 
 class Episode:
-    def __init__(self, cfg: EpisodeConfig, llm=None) -> None:
+    def __init__(self, cfg: EpisodeConfig, llm: TextGenerator | None = None) -> None:
         self.cfg = cfg
         self.llm = llm
         # Pseudorandomness is intentional for reproducible simulations, not cryptography.
@@ -351,8 +352,7 @@ class Episode:
 
     def _llm_compose(self, agent: AgentState) -> tuple[str, float, str]:
         prompt = self._agent_prompt(agent)
-        response = self.llm.invoke(prompt)
-        text = str(getattr(response, "content", response))
+        text = self.llm.complete(prompt)
         self.tokens_agents += estimate_tokens(prompt) + estimate_tokens(text)
         answer, confidence = extract_claim(text)
         if answer not in self.task.options:

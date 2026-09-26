@@ -141,11 +141,9 @@ def test_episodio_con_llm_real_simulado():
             self.truth = truth
             self.calls = 0
 
-        def invoke(self, prompt: str):
-            from types import SimpleNamespace
-
+        def complete(self, prompt: str) -> str:
             self.calls += 1
-            return SimpleNamespace(content=f"RESPUESTA: {self.truth} | CONFIANZA: 0.8. Lo calcule dos veces.")
+            return f"RESPUESTA: {self.truth} | CONFIANZA: 0.8. Lo calcule dos veces."
 
     cfg = EpisodeConfig(attack="A1", defense=FULL, seed=4, rounds=2)
     from trust_mas.testbed.episode import Episode
@@ -208,14 +206,12 @@ def test_bootstrap_ci_contiene_la_media():
 
 
 def test_experimento_con_llm_real_simulado(tmp_path):
-    from types import SimpleNamespace
-
     from trust_mas.testbed.analysis import load
     from trust_mas.testbed.experiment import run_llm_experiment
 
     class ParrotLLM:
-        def invoke(self, prompt: str):
-            return SimpleNamespace(content="RESPUESTA: A | CONFIANZA: 0.7. Revisado.")
+        def complete(self, prompt: str) -> str:
+            return "RESPUESTA: A | CONFIANZA: 0.7. Revisado."
 
     path = run_llm_experiment(
         ParrotLLM(), tmp_path, defenses=("ninguna", "ABC"), runs=1, rounds=2,
@@ -227,11 +223,11 @@ def test_experimento_con_llm_real_simulado(tmp_path):
     analyze(df)
 
 
-def test_build_chat_model_sin_clave_o_proveedor_invalido(monkeypatch):
-    from trust_mas.llm import LLMConfigError, build_chat_model
+def test_build_text_generator_sin_clave_o_proveedor_invalido(monkeypatch):
+    from trust_mas.llm import LLMConfigError, build_text_generator
 
     monkeypatch.delenv("GOOGLE_API_KEY", raising=False)
     with pytest.raises(LLMConfigError):
-        build_chat_model("gemini")
+        build_text_generator("gemini")
     with pytest.raises(LLMConfigError):
-        build_chat_model("gpt-local")
+        build_text_generator("gpt-local")

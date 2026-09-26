@@ -1,7 +1,5 @@
 """Topologías de LangGraph y efecto real de DEGRADE / CORROBORATE / QUARANTINE."""
 
-from types import SimpleNamespace
-
 import pytest
 
 from trust_mas.agent import SimulatedAgent
@@ -18,9 +16,9 @@ class RepeatLLM:
         self.text = text
         self.prompts: list[str] = []
 
-    def invoke(self, prompt: str):
+    def complete(self, prompt: str) -> str:
         self.prompts.append(prompt)
-        return SimpleNamespace(content=self.text)
+        return self.text
 
 
 def setup(names=("orchestrator", "a", "b", "c", "d", "e")):

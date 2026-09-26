@@ -22,6 +22,7 @@ from dataclasses import dataclass, field
 from typing import Optional, Protocol
 
 from .judge import HeuristicJudge, estimate_tokens, normalize
+from .ports import TextGenerator
 
 CLAIM_RE = re.compile(r"respuesta(?: final)?(?: es|:)\s*\(?([a-z])\)?\b", re.IGNORECASE)
 CONFIDENCE_RE = re.compile(r"confianza(?: de)?[:\s]*([01](?:[.,]\d+)?)", re.IGNORECASE)
@@ -100,14 +101,13 @@ Texto no confiable:
 class LLMQuarantineModel:
     """Extracción con LLM aislado; si la salida es ilegible, usa las reglas."""
 
-    def __init__(self, llm, fallback: QuarantineModel | None = None) -> None:
+    def __init__(self, llm: TextGenerator, fallback: QuarantineModel | None = None) -> None:
         self.llm = llm
         self.fallback = fallback or RuleBasedQuarantineModel()
 
     def sanitize(self, body: str) -> SanitizedContent:
         prompt = QUARANTINE_PROMPT.format(body=body)
-        response = self.llm.invoke(prompt)
-        text = str(getattr(response, "content", response))
+        text = self.llm.complete(prompt)
         tokens = estimate_tokens(prompt) + estimate_tokens(text)
         rules = self.fallback.sanitize(body)
         claim, confidence = extract_claim(text)
