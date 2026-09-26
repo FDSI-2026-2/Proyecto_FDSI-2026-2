@@ -227,8 +227,12 @@ class MessageBus:
                 newly_isolated = self._apply_remediation(culprit, PolicyDecision.REJECT, reasons)
             self._audit(effective_message, PolicyDecision.REJECT, 0.0, threshold, provenance_trusted, reasons)
             return RoutingResult(
-                PolicyDecision.REJECT, 0.0, threshold, reasons,
-                newly_isolated=newly_isolated, latency_s=time.perf_counter() - started,
+                PolicyDecision.REJECT,
+                0.0,
+                threshold,
+                reasons,
+                newly_isolated=newly_isolated,
+                latency_s=time.perf_counter() - started,
             )
 
         if cfg.remediation and message.sender_id in self.isolated:
@@ -238,8 +242,13 @@ class MessageBus:
             tokens_used += sanitized.tokens_used if sanitized else 0
             self._audit(effective_message, decision, 0.0, self.trust_engine.threshold.current(), False, reasons)
             return RoutingResult(
-                decision, 0.0, self.trust_engine.threshold.current(), reasons,
-                sanitized=sanitized, tokens_used=tokens_used, latency_s=time.perf_counter() - started,
+                decision,
+                0.0,
+                self.trust_engine.threshold.current(),
+                reasons,
+                sanitized=sanitized,
+                tokens_used=tokens_used,
+                latency_s=time.perf_counter() - started,
             )
 
         # --- Capa C: confianza dinamica ---
@@ -281,9 +290,14 @@ class MessageBus:
 
         self._audit(effective_message, final_decision, score, threshold, provenance_trusted, reasons)
         return RoutingResult(
-            final_decision, score, threshold, reasons,
-            sanitized=sanitized, newly_isolated=newly_isolated,
-            tokens_used=tokens_used, latency_s=time.perf_counter() - started,
+            final_decision,
+            score,
+            threshold,
+            reasons,
+            sanitized=sanitized,
+            newly_isolated=newly_isolated,
+            tokens_used=tokens_used,
+            latency_s=time.perf_counter() - started,
         )
 
     # -------------------------------------------------------------- helpers

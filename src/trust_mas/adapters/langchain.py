@@ -2,14 +2,7 @@
 
 from __future__ import annotations
 
-from typing import Protocol
-
-
-class InvokableChatModel(Protocol):
-    """Minimo contrato de los clientes de chat de LangChain."""
-
-    def invoke(self, prompt: str):  # pragma: no cover - protocolo de tercero
-        ...
+from typing import Any
 
 
 class TextGenerationError(RuntimeError):
@@ -19,7 +12,7 @@ class TextGenerationError(RuntimeError):
 class LangChainTextGenerator:
     """Oculta ``invoke`` y ``content`` de LangChain tras ``TextGenerator``."""
 
-    def __init__(self, client: InvokableChatModel) -> None:
+    def __init__(self, client: Any) -> None:
         self._client = client
 
     def complete(self, prompt: str) -> str:

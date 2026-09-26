@@ -180,10 +180,19 @@ def test_analisis_y_panel_sobre_un_grid_pequeno():
     _, df = small_grid()
     curve = pd.DataFrame(
         run_grid(
-            [replace(c, base_threshold=t) for t in (0.4, 0.6) for c in GridSpec(
-                topologies=("malla",), attacks=("A2",), fractions=(1,), models=("intermedio",),
-                defenses=(FULL,), runs=2, rounds=3,
-            ).configs()],
+            [
+                replace(c, base_threshold=t)
+                for t in (0.4, 0.6)
+                for c in GridSpec(
+                    topologies=("malla",),
+                    attacks=("A2",),
+                    fractions=(1,),
+                    models=("intermedio",),
+                    defenses=(FULL,),
+                    runs=2,
+                    rounds=3,
+                ).configs()
+            ],
             workers=1,
         )
     )
@@ -214,8 +223,14 @@ def test_experimento_con_llm_real_simulado(tmp_path):
             return "RESPUESTA: A | CONFIANZA: 0.7. Revisado."
 
     path = run_llm_experiment(
-        ParrotLLM(), tmp_path, defenses=("ninguna", "ABC"), runs=1, rounds=2,
-        topologies=("malla",), attacks=("A2",), verbose=False,
+        ParrotLLM(),
+        tmp_path,
+        defenses=("ninguna", "ABC"),
+        runs=1,
+        rounds=2,
+        topologies=("malla",),
+        attacks=("A2",),
+        verbose=False,
     )
     df = load(path)
     assert len(df) == 4  # (sin ataque + A2) x 2 configuraciones

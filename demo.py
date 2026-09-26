@@ -40,7 +40,7 @@ def digest(*parts: str) -> str:
 def print_result(step_title: str, message, result) -> None:
     print(SEPARATOR)
     print(f"{step_title}")
-    print(f"  {message.sender_id} -> {message.recipient_id} : \"{message.body[:70]}\"")
+    print(f'  {message.sender_id} -> {message.recipient_id} : "{message.body[:70]}"')
     print(f"  DECISION: {result.decision.value.upper()}  (score={result.score:.2f}, umbral={result.threshold:.2f})")
     for reason in result.reasons:
         print(f"    - {reason}")
@@ -70,13 +70,16 @@ def main() -> None:
     registry.register_agent("worker_c", compromised_kp.verify_key_bytes(), AgentRole.WORKER)
 
     orchestrator = SimulatedAgent("orchestrator", AgentRole.ORCHESTRATOR, orchestrator_kp)
-    worker_a = SimulatedAgent("worker_a", AgentRole.WORKER, worker_a_kp)
     worker_b = SimulatedAgent("worker_b", AgentRole.WORKER, worker_b_kp)
     worker_c = SimulatedAgent("worker_c", AgentRole.WORKER, compromised_kp)  # agente comprometido
 
     # Tokens de capacidad: worker_c solo puede leer archivos, nunca transferir fondos.
-    token_a = issue_capability_token(orchestrator_kp, "orchestrator", "worker_a", frozenset({"read_file", "send_email"}), max_delegation_depth=1)
-    token_c = issue_capability_token(orchestrator_kp, "orchestrator", "worker_c", frozenset({"read_file"}), max_delegation_depth=0)
+    token_a = issue_capability_token(
+        orchestrator_kp, "orchestrator", "worker_a", frozenset({"read_file", "send_email"}), max_delegation_depth=1
+    )
+    token_c = issue_capability_token(
+        orchestrator_kp, "orchestrator", "worker_c", frozenset({"read_file"}), max_delegation_depth=0
+    )
     bus.register_capability_token("worker_a", token_a)
     bus.register_capability_token("worker_c", token_c)
 

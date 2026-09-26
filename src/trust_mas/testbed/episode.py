@@ -252,7 +252,9 @@ class Episode:
         orch_kp = self.agents["orchestrator"].keypair
         self.bus.register_capability_token(
             "orchestrator",
-            issue_capability_token(orch_kp, "orchestrator", "orchestrator", frozenset({DECISION_ACTION, "asignar_tarea"}), 1),
+            issue_capability_token(
+                orch_kp, "orchestrator", "orchestrator", frozenset({DECISION_ACTION, "asignar_tarea"}), 1
+            ),
         )
         for agent_id in self.topology.order:
             if agent_id != "orchestrator":
@@ -320,8 +322,9 @@ class Episode:
 
     # ----------------------------------------------------------- composition
     def _honest_outgoing(self, agent: AgentState, round_index: int) -> list[Outgoing]:
-        if self.llm is not None and not agent.infected:
-            answer, confidence, body = self._llm_compose(agent)
+        llm = self.llm
+        if llm is not None and not agent.infected:
+            answer, confidence, body = self._llm_compose(agent, llm)
         else:
             answer, confidence = self.belief(agent)
             body = honest_body(answer, confidence)
@@ -350,9 +353,9 @@ class Episode:
             "Responde con una linea 'RESPUESTA: <letra> | CONFIANZA: <0 a 1>' y una justificacion breve."
         )
 
-    def _llm_compose(self, agent: AgentState) -> tuple[str, float, str]:
+    def _llm_compose(self, agent: AgentState, llm: TextGenerator) -> tuple[str, float, str]:
         prompt = self._agent_prompt(agent)
-        text = self.llm.complete(prompt)
+        text = llm.complete(prompt)
         self.tokens_agents += estimate_tokens(prompt) + estimate_tokens(text)
         answer, confidence = extract_claim(text)
         if answer not in self.task.options:
@@ -410,7 +413,13 @@ class Episode:
             self._retract(isolated)
 
     def _apply(
-        self, receiver: AgentState, sender_id: str, message: Message, out: Outgoing, result: RoutingResult, round_index: int
+        self,
+        receiver: AgentState,
+        sender_id: str,
+        message: Message,
+        out: Outgoing,
+        result: RoutingResult,
+        round_index: int,
     ) -> None:
         decision = result.decision
         if decision == PolicyDecision.REJECT or out.claim is None:
@@ -419,14 +428,26 @@ class Episode:
             sanitized = result.sanitized
             if sanitized is not None and sanitized.claim in self.task.options:
                 receiver.inbox[sender_id] = Claim(
-                    sender_id, sanitized.claim, sanitized.confidence or 0.5, QUARANTINE_DATA_WEIGHT,
-                    decision, round_index, body=sanitized.kept_text, sanitized=True,
+                    sender_id,
+                    sanitized.claim,
+                    sanitized.confidence or 0.5,
+                    QUARANTINE_DATA_WEIGHT,
+                    decision,
+                    round_index,
+                    body=sanitized.kept_text,
+                    sanitized=True,
                 )
             return
 
         receiver.inbox[sender_id] = Claim(
-            sender_id, out.claim, out.confidence, DECISION_WEIGHT[decision], decision, round_index,
-            body=out.body, persuasive=out.persuasive,
+            sender_id,
+            out.claim,
+            out.confidence,
+            DECISION_WEIGHT[decision],
+            decision,
+            round_index,
+            body=out.body,
+            persuasive=out.persuasive,
         )
         if decision == PolicyDecision.CORROBORATE or receiver.malicious:
             return  # retenido fuera del contexto / al atacante no le afecta
@@ -440,11 +461,7 @@ class Episode:
             if self.rng.random() < self.profile.authority_compliance:
                 receiver.directive_answer = out.claim
                 receiver.directive_source = sender_id
-        if (
-            out.action == DECISION_ACTION
-            and believed_orchestrator
-            and receiver.agent_id == self.topology.decision_node
-        ):
+        if out.action == DECISION_ACTION and believed_orchestrator and receiver.agent_id == self.topology.decision_node:
             self.captured_answer = out.claim
             self.captured_by = sender_id
 

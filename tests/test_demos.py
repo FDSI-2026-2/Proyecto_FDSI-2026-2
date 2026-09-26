@@ -21,8 +21,13 @@ def test_demo_corre_y_cumple_su_guion(script):
 def test_demo_orchestrator_sin_clave_falla_con_mensaje_claro():
     env = {k: v for k, v in __import__("os").environ.items() if k not in ("GOOGLE_API_KEY", "TRUSTMAS_LLM")}
     completed = subprocess.run(
-        [sys.executable, str(ROOT / "demo_orchestrator.py")], cwd=ROOT, capture_output=True, text=True,
-        encoding="utf-8", timeout=60, env=env,
+        [sys.executable, str(ROOT / "demo_orchestrator.py")],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        timeout=60,
+        env=env,
     )
     assert completed.returncode != 0
     assert "GOOGLE_API_KEY" in completed.stderr

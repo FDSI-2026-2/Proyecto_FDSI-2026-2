@@ -65,7 +65,9 @@ def test_sin_capa_b_el_documento_externo_no_va_a_cuarentena():
 
 def test_sin_capa_b_no_se_exige_capacidad_para_acciones():
     bus, agents, _ = setup(DefenseConfig.from_name("AC"))
-    msg = agents["mallory"].compose("worker", "ok", digest("c"), action="transfer_funds", provenance=agent_tag("mallory"))
+    msg = agents["mallory"].compose(
+        "worker", "ok", digest("c"), action="transfer_funds", provenance=agent_tag("mallory")
+    )
     assert bus.route(msg).decision == PolicyDecision.ACCEPT
 
 

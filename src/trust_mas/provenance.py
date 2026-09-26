@@ -13,7 +13,9 @@ from .models import CapabilityToken, Message, ProvenanceSource, ProvenanceTag
 UNTRUSTED_BY_DEFAULT = {ProvenanceSource.EXTERNAL_DOC, ProvenanceSource.TOOL_OUTPUT}
 
 
-def tag_provenance(source: ProvenanceSource, origin_id: str, trusted: bool | None = None, chain: tuple[str, ...] = ()) -> ProvenanceTag:
+def tag_provenance(
+    source: ProvenanceSource, origin_id: str, trusted: bool | None = None, chain: tuple[str, ...] = ()
+) -> ProvenanceTag:
     if trusted is None:
         trusted = source not in UNTRUSTED_BY_DEFAULT
     return ProvenanceTag(source=source, origin_id=origin_id, trusted=trusted, chain=chain)
@@ -36,9 +38,7 @@ class QuarantineEngine:
             return ProvenanceVerdict(True, "sin etiqueta de procedencia: se trata como no confiable")
 
         if tag.source == ProvenanceSource.AGENT and tag.origin_id != message.sender_id:
-            return ProvenanceVerdict(
-                True, "la procedencia de agente no coincide con el emisor autenticado"
-            )
+            return ProvenanceVerdict(True, "la procedencia de agente no coincide con el emisor autenticado")
 
         if not tag.trusted:
             return ProvenanceVerdict(
@@ -46,9 +46,7 @@ class QuarantineEngine:
             )
 
         if message.action is not None and tag.source in UNTRUSTED_BY_DEFAULT:
-            return ProvenanceVerdict(
-                True, "contenido de fuente no confiable intenta disparar una accion directamente"
-            )
+            return ProvenanceVerdict(True, "contenido de fuente no confiable intenta disparar una accion directamente")
 
         return ProvenanceVerdict(False, "procedencia confiable")
 

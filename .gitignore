@@ -12,6 +12,10 @@ venv/
 env/
 .env
 .env.*
+*.pem
+*.key
+*.p12
+*.pfx
 
 # Tests y herramientas
 .pytest_cache/

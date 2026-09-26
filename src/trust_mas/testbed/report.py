@@ -73,7 +73,9 @@ def _bar_chart(rows: list[dict], value_key: str, lo_key: str, hi_key: str, label
     parts = [f'<svg viewBox="0 0 {width} {height}" role="img" class="chart">']
     for tick in (0, 0.25, 0.5, 0.75, 1.0):
         parts.append(f'<line class="grid" x1="{x(tick):.1f}" x2="{x(tick):.1f}" y1="0" y2="{height - 22}"/>')
-        parts.append(f'<text class="tick" x="{x(tick):.1f}" y="{height - 6}" text-anchor="middle">{int(tick * 100)} %</text>')
+        parts.append(
+            f'<text class="tick" x="{x(tick):.1f}" y="{height - 6}" text-anchor="middle">{int(tick * 100)} %</text>'
+        )
     for i, row in enumerate(rows):
         y = i * (bar_h + gap) + 4
         value = row[value_key]
@@ -86,13 +88,21 @@ def _bar_chart(rows: list[dict], value_key: str, lo_key: str, hi_key: str, label
             f"V{y + bar_h - r} Q{left + w},{y + bar_h} {left + w - r},{y + bar_h} H{left} Z"
         )
         tip = f"{row[label_key]}: {_pct(value, 1)} (IC 95 %: {_pct(row[lo_key], 1)} a {_pct(row[hi_key], 1)})"
-        parts.append(f'<text class="label" x="{left - 10}" y="{y + bar_h / 2 + 4}" text-anchor="end">{_e(row[label_key])}</text>')
-        parts.append(f'<g class="hit" data-tip="{_e(tip)}"><rect x="{left}" y="{y - 4}" width="{plot_w}" height="{bar_h + 8}" fill="transparent"/>')
+        parts.append(
+            f'<text class="label" x="{left - 10}" y="{y + bar_h / 2 + 4}" text-anchor="end">{_e(row[label_key])}</text>'
+        )
+        parts.append(
+            f'<g class="hit" data-tip="{_e(tip)}"><rect x="{left}" y="{y - 4}" width="{plot_w}" height="{bar_h + 8}" fill="transparent"/>'
+        )
         parts.append(f'<path class="bar s1" d="{path}"/>')
         if not math.isnan(row[lo_key]):
             cy = y + bar_h / 2
-            parts.append(f'<line class="whisker" x1="{x(row[lo_key]):.1f}" x2="{x(row[hi_key]):.1f}" y1="{cy}" y2="{cy}"/>')
-        parts.append(f'</g><text class="value" x="{x(max(value, row[hi_key] if not math.isnan(row[hi_key]) else value)) + 6:.1f}" y="{y + bar_h / 2 + 4}">{_pct(value)}</text>')
+            parts.append(
+                f'<line class="whisker" x1="{x(row[lo_key]):.1f}" x2="{x(row[hi_key]):.1f}" y1="{cy}" y2="{cy}"/>'
+            )
+        parts.append(
+            f'</g><text class="value" x="{x(max(value, row[hi_key] if not math.isnan(row[hi_key]) else value)) + 6:.1f}" y="{y + bar_h / 2 + 4}">{_pct(value)}</text>'
+        )
     parts.append("</svg>")
     return "".join(parts)
 
@@ -148,10 +158,14 @@ def _line_chart(curve: pd.DataFrame) -> str:
     parts = [f'<svg viewBox="0 0 {width} {height}" role="img" class="chart">']
     for tick in (0, 0.25, 0.5, 0.75, 1.0):
         parts.append(f'<line class="grid" x1="{left}" x2="{left + plot_w}" y1="{y(tick):.1f}" y2="{y(tick):.1f}"/>')
-        parts.append(f'<text class="tick" x="{left - 8}" y="{y(tick) + 4:.1f}" text-anchor="end">{int(tick * 100)} %</text>')
+        parts.append(
+            f'<text class="tick" x="{left - 8}" y="{y(tick) + 4:.1f}" text-anchor="end">{int(tick * 100)} %</text>'
+        )
     for v in xs:
         parts.append(f'<text class="tick" x="{x(v):.1f}" y="{height - 14}" text-anchor="middle">{v:.1f}</text>')
-    parts.append(f'<text class="tick" x="{left + plot_w / 2}" y="{height}" text-anchor="middle">umbral base de la Capa C</text>')
+    parts.append(
+        f'<text class="tick" x="{left + plot_w / 2}" y="{height}" text-anchor="middle">umbral base de la Capa C</text>'
+    )
     data = curve.sort_values("umbral_base").to_dict("records")
     for key, label, cls in series:
         points = " ".join(f"{x(r['umbral_base']):.1f},{y(r[key]):.1f}" for r in data)
@@ -165,7 +179,9 @@ def _line_chart(curve: pd.DataFrame) -> str:
             f"Umbral {r['umbral_base']:.1f}: éxito del ataque {_pct(r['asr'], 1)}, "
             f"exactitud sin ataque {_pct(r['exactitud_sin_ataque'], 1)}, FPR {_pct(r['fpr'], 1)}"
         )
-        parts.append(f'<g class="hit" data-tip="{_e(tip)}"><rect x="{x(r["umbral_base"]) - 14:.1f}" y="{top}" width="28" height="{plot_h}" fill="transparent"/>')
+        parts.append(
+            f'<g class="hit" data-tip="{_e(tip)}"><rect x="{x(r["umbral_base"]) - 14:.1f}" y="{top}" width="28" height="{plot_h}" fill="transparent"/>'
+        )
         for key, _, cls in series:
             parts.append(f'<circle class="dot {cls}" cx="{x(r["umbral_base"]):.1f}" cy="{y(r[key]):.1f}" r="4"/>')
         parts.append("</g>")
@@ -185,7 +201,9 @@ def _grouped_bars(by_topology: pd.DataFrame) -> str:
     parts = [f'<svg viewBox="0 0 {width} {height}" role="img" class="chart">']
     for tick in (0, 0.25, 0.5, 0.75, 1.0):
         parts.append(f'<line class="grid" x1="{x(tick):.1f}" x2="{x(tick):.1f}" y1="0" y2="{height - 22}"/>')
-        parts.append(f'<text class="tick" x="{x(tick):.1f}" y="{height - 6}" text-anchor="middle">{int(tick * 100)} %</text>')
+        parts.append(
+            f'<text class="tick" x="{x(tick):.1f}" y="{height - 6}" text-anchor="middle">{int(tick * 100)} %</text>'
+        )
     for i, row in enumerate(rows):
         y0 = i * (2 * bar_h + 2 + pair_gap) + 4
         label = f"{TOPOLOGY_LABEL.get(row['topology'], row['topology'])} · {row['n_malicious']} infiltrado(s)"
@@ -212,9 +230,11 @@ def _grouped_bars(by_topology: pd.DataFrame) -> str:
 
 
 def _legend(items: list[tuple[str, str]]) -> str:
-    return '<div class="legend">' + "".join(
-        f'<span><i class="swatch {cls}"></i>{_e(label)}</span>' for cls, label in items
-    ) + "</div>"
+    return (
+        '<div class="legend">'
+        + "".join(f'<span><i class="swatch {cls}"></i>{_e(label)}</span>' for cls, label in items)
+        + "</div>"
+    )
 
 
 # ------------------------------------------------------------------- page
@@ -267,22 +287,33 @@ def build_report(analysis: Analysis, preset: str = "", n_episodes: Optional[int]
     full_row = full.iloc[0].to_dict() if not full.empty else {}
 
     tiles = [
-        ("hero", "Reducción del éxito del ataque (A + B + C)", _pct(full_row.get("reduccion_asr", float("nan"))),
-         f"IC 95 %: {_pct(full_row.get('reduccion_lo', float('nan')))} a {_pct(full_row.get('reduccion_hi', float('nan')))} · meta ≥ 70 %"),
+        (
+            "hero",
+            "Reducción del éxito del ataque (A + B + C)",
+            _pct(full_row.get("reduccion_asr", float("nan"))),
+            f"IC 95 %: {_pct(full_row.get('reduccion_lo', float('nan')))} a {_pct(full_row.get('reduccion_hi', float('nan')))} · meta ≥ 70 %",
+        ),
         ("", "F1 identificando agentes comprometidos", _num(full_row.get("f1", float("nan"))), "meta ≥ 0,85"),
         ("", "Tasa de falsos positivos", _pct(full_row.get("fpr", float("nan")), 1), "meta ≤ 5 %"),
-        ("", "Caída de exactitud sin ataque", f"{_num(full_row.get('caida_exactitud_pts', float('nan')), 1)} pts", "meta ≤ 5 pts"),
+        (
+            "",
+            "Caída de exactitud sin ataque",
+            f"{_num(full_row.get('caida_exactitud_pts', float('nan')), 1)} pts",
+            "meta ≤ 5 pts",
+        ),
     ]
-    tiles_html = '<div class="tiles">' + "".join(
-        f'<div class="tile {cls}"><div class="l">{_e(l)}</div><div class="v">{_e(v)}</div><div class="t">{_e(t)}</div></div>'
-        for cls, l, v, t in tiles
-    ) + "</div>"
+    tiles_html = (
+        '<div class="tiles">'
+        + "".join(
+            f'<div class="tile {css_class}"><div class="l">{_e(label)}</div><div class="v">{_e(value)}</div><div class="t">{_e(detail)}</div></div>'
+            for css_class, label, value, detail in tiles
+        )
+        + "</div>"
+    )
 
     targets = analysis.targets.copy()
     is_points = targets.meta.str.contains("pts")
-    targets["valor_fmt"] = [
-        f"{_num(v, 1)} pts" if pts else _pct(v, 1) for v, pts in zip(targets.valor, is_points)
-    ]
+    targets["valor_fmt"] = [f"{_num(v, 1)} pts" if pts else _pct(v, 1) for v, pts in zip(targets.valor, is_points)]
     targets["objetivo_fmt"] = [
         f"{op} {_num(g, 0)} pts" if pts else (f"{op} {_num(g, 2)}" if "F1" in m else f"{op} {_pct(g)}")
         for op, g, pts, m in zip(targets.operador, targets.objetivo, is_points, targets.meta)
@@ -290,15 +321,18 @@ def build_report(analysis: Analysis, preset: str = "", n_episodes: Optional[int]
     targets.loc[targets.meta.str.contains("F1"), "valor_fmt"] = [
         _num(v) for v in targets[targets.meta.str.contains("F1")].valor
     ]
-    targets_html = _table(
-        targets,
-        [
-            ("meta", "Meta", _e),
-            ("valor_fmt", "Valor", _e),
-            ("objetivo_fmt", "Objetivo", _e),
-            ("cumple", "Estado", _status),
-        ],
-    ) + '<p class="note">Una caída negativa significa que la defensa mejora la métrica.</p>'
+    targets_html = (
+        _table(
+            targets,
+            [
+                ("meta", "Meta", _e),
+                ("valor_fmt", "Valor", _e),
+                ("objetivo_fmt", "Objetivo", _e),
+                ("cumple", "Estado", _status),
+            ],
+        )
+        + '<p class="note">Una caída negativa significa que la defensa mejora la métrica.</p>'
+    )
 
     ablation_rows = by_config.to_dict("records")
     ablation_chart = _bar_chart(ablation_rows, "asr", "asr_lo", "asr_hi", "label")
@@ -356,7 +390,11 @@ def build_report(analysis: Analysis, preset: str = "", n_episodes: Optional[int]
             ("delta_C", "Δ C", lambda v: _num(v, 3)),
             ("suma_individual", "Suma", lambda v: _num(v, 3)),
             ("delta_ABC", "Δ ABC", lambda v: _num(v, 3)),
-            ("interaccion", "Interacción", lambda v: f"{v:+.3f}" if isinstance(v, (int, float)) and not math.isnan(v) else "n/d"),
+            (
+                "interaccion",
+                "Interacción",
+                lambda v: f"{v:+.3f}" if isinstance(v, (int, float)) and not math.isnan(v) else "n/d",
+            ),
         ],
     )
     detection_table = _table(

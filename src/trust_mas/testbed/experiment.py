@@ -76,9 +76,7 @@ PRESETS: dict[str, dict[str, GridSpec]] = {
     # Minutos: para verificar que todo corre y ver tendencias gruesas.
     "rapido": {
         "factorial": GridSpec(runs=5),
-        "curva": GridSpec(
-            models=("intermedio",), defenses=(DefenseConfig.full(),), runs=5, thresholds=THRESHOLDS
-        ),
+        "curva": GridSpec(models=("intermedio",), defenses=(DefenseConfig.full(),), runs=5, thresholds=THRESHOLDS),
         "costo": GridSpec(
             topologies=("malla",), attacks=("A2",), fractions=(1,), models=("intermedio",), runs=5, llm_defenses=True
         ),
@@ -86,9 +84,7 @@ PRESETS: dict[str, dict[str, GridSpec]] = {
     # El diseño de la propuesta (>= 30 corridas por celda).
     "completo": {
         "factorial": GridSpec(runs=30),
-        "curva": GridSpec(
-            models=("intermedio",), defenses=(DefenseConfig.full(),), runs=30, thresholds=THRESHOLDS
-        ),
+        "curva": GridSpec(models=("intermedio",), defenses=(DefenseConfig.full(),), runs=30, thresholds=THRESHOLDS),
         "costo": GridSpec(attacks=("A1", "A2"), fractions=(1,), runs=30, llm_defenses=True),
     },
 }

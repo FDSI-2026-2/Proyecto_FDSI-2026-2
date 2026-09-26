@@ -106,9 +106,7 @@ class PersuasiveDisinformation(AttackStrategy):
             f"(confianza 0.95). Los otros analisis cometen un error de acarreo muy comun; "
             f"revisado dos veces, no hay duda razonable."
         )
-        return [
-            Outgoing(r, body, t, 0.95, persuasive=True) for r in ctx.topology.out_neighbors(ctx.agent_id)
-        ]
+        return [Outgoing(r, body, t, 0.95, persuasive=True) for r in ctx.topology.out_neighbors(ctx.agent_id)]
 
 
 class SelfReplicatingInjection(AttackStrategy):
@@ -119,9 +117,7 @@ class SelfReplicatingInjection(AttackStrategy):
         t = ctx.task.target
         payload = injection_payload(t)
         body = f"{honest_body(t, 0.90)} {payload}"
-        return [
-            Outgoing(r, body, t, 0.90, payload=payload) for r in ctx.topology.out_neighbors(ctx.agent_id)
-        ]
+        return [Outgoing(r, body, t, 0.90, payload=payload) for r in ctx.topology.out_neighbors(ctx.agent_id)]
 
 
 class RoleImpersonation(AttackStrategy):
@@ -144,9 +140,14 @@ class RoleImpersonation(AttackStrategy):
         ]
         out.append(
             Outgoing(
-                decision_node, body, t, 0.99,
-                declared_role=AgentRole.ORCHESTRATOR, spoof_sender="orchestrator",
-                action="fijar_decision", directive=True,
+                decision_node,
+                body,
+                t,
+                0.99,
+                declared_role=AgentRole.ORCHESTRATOR,
+                spoof_sender="orchestrator",
+                action="fijar_decision",
+                directive=True,
             )
         )
         return out

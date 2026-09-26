@@ -34,7 +34,9 @@ def main() -> None:
     parser.add_argument("--preset", choices=sorted(PRESETS), default="rapido")
     parser.add_argument("--out", type=Path, default=Path("results"))
     parser.add_argument("--workers", type=int, default=None, help="procesos en paralelo (por defecto: nucleos - 1)")
-    parser.add_argument("--solo-analisis", action="store_true", help="no correr episodios; reanalizar los CSV existentes")
+    parser.add_argument(
+        "--solo-analisis", action="store_true", help="no correr episodios; reanalizar los CSV existentes"
+    )
     parser.add_argument(
         "--llm",
         choices=("gemini", "ollama"),

@@ -115,7 +115,7 @@ class AgentNode:
 
         transcript = [
             f"[{self.agent.agent_id} -> {self.recipient_id}] DECISION={result.decision.value} "
-            f"score={result.score:.2f} umbral={result.threshold:.2f}\n  \"{body}\""
+            f'score={result.score:.2f} umbral={result.threshold:.2f}\n  "{body}"'
         ]
         routing_log = [
             {
@@ -137,7 +137,9 @@ class AgentNode:
         elif result.decision == PolicyDecision.CORROBORATE:
             pending.append({**entry, "body": body})
             transcript.append("  -> RETENIDO por TRUST-MAS: pendiente de corroboracion, no entra al contexto")
-        elif result.decision == PolicyDecision.QUARANTINE and result.sanitized is not None and result.sanitized.kept_text:
+        elif (
+            result.decision == PolicyDecision.QUARANTINE and result.sanitized is not None and result.sanitized.kept_text
+        ):
             shared.append(
                 {**entry, "body": result.sanitized.kept_text, "weight": QUARANTINED_DATA_WEIGHT, "quarantined": True}
             )

@@ -86,7 +86,10 @@ class GraphAnomalyDetector:
             unexpected = [r for r in self.graph.successors(sender_id) if (sender_id, r) not in self.expected_edges]
             if unexpected:
                 candidates.append(
-                    (min(0.4, 0.1 * len(unexpected) + 0.1), f"aristas fuera de la topologia declarada: {len(unexpected)}")
+                    (
+                        min(0.4, 0.1 * len(unexpected) + 0.1),
+                        f"aristas fuera de la topologia declarada: {len(unexpected)}",
+                    )
                 )
         else:
             out_degrees = dict(self.graph.out_degree())

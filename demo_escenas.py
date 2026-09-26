@@ -63,7 +63,9 @@ def verdict(episode: Episode) -> None:
         outcome = "DESVIADA a la respuesta del atacante"
     else:
         outcome = "incorrecta (error propio del equipo)"
-    print(f"  Pregunta: {task.question}  verdad={task.truth} ({task.options[task.truth]})  atacante busca={task.target}")
+    print(
+        f"  Pregunta: {task.question}  verdad={task.truth} ({task.options[task.truth]})  atacante busca={task.target}"
+    )
     print(f"  Decision colectiva: {r.final_answer} -> {outcome}")
     if r.decision_captured:
         print("  (la decision la fijo directamente una orden 'fijar_decision' aceptada: captura del orquestador)")
@@ -87,9 +89,21 @@ def show_event(label: str, event) -> None:
     if event is None:
         return
     impersonated = f" (haciendose pasar por '{event['as']}')" if event["as"] != event["from"] else ""
-    print(f"  {label}: ronda {event['round'] + 1}, {event['from']}{impersonated} -> {event['to']}: {event['decision'].upper()}")
+    print(
+        f"  {label}: ronda {event['round'] + 1}, {event['from']}{impersonated} -> {event['to']}: {event['decision'].upper()}"
+    )
     for reason in event["reasons"]:
-        if any(tag in reason for tag in ("[Capa A] suplant", "[Capa A] firma", "[Capa B] emisor", "[Cuarentena]", "[Remediacion]", "[Capa B] origen")):
+        if any(
+            tag in reason
+            for tag in (
+                "[Capa A] suplant",
+                "[Capa A] firma",
+                "[Capa B] emisor",
+                "[Cuarentena]",
+                "[Remediacion]",
+                "[Capa B] origen",
+            )
+        ):
             print(f"      - {reason}")
 
 

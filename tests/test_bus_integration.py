@@ -107,8 +107,20 @@ def test_inyeccion_desde_documento_externo_va_a_cuarentena_o_es_rechazada():
 
 def test_auditoria_registra_todas_las_decisiones():
     bus, orchestrator, worker, compromised = build_bus()
-    bus.route(orchestrator.compose("worker", "m1", digest("a"), provenance=tag_provenance(ProvenanceSource.AGENT, "orchestrator")))
-    bus.route(compromised.compose("worker", "m2", digest("b"), declared_role=AgentRole.ORCHESTRATOR, provenance=tag_provenance(ProvenanceSource.AGENT, "compromised")))
+    bus.route(
+        orchestrator.compose(
+            "worker", "m1", digest("a"), provenance=tag_provenance(ProvenanceSource.AGENT, "orchestrator")
+        )
+    )
+    bus.route(
+        compromised.compose(
+            "worker",
+            "m2",
+            digest("b"),
+            declared_role=AgentRole.ORCHESTRATOR,
+            provenance=tag_provenance(ProvenanceSource.AGENT, "compromised"),
+        )
+    )
     assert len(bus.audit_log.entries) == 2
     ok, _ = bus.audit_log.verify_chain()
     assert ok

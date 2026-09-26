@@ -1,0 +1,9 @@
+-r requirements-test.txt
+
+ruff>=0.12
+mypy>=1.18
+bandit>=1.8
+pip-audit>=2.9
+semgrep>=1.140
+pre-commit>=4.3
+cyclonedx-bom>=7.2

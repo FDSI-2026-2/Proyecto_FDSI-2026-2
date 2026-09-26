@@ -262,9 +262,7 @@ def verify_capability_token(
         parent = current.parent
         if parent is None:
             if registry.official_role(current.issuer) not in root_roles:
-                return VerificationResult(
-                    False, f"emisor raiz '{current.issuer}' sin autoridad para emitir tokens"
-                )
+                return VerificationResult(False, f"emisor raiz '{current.issuer}' sin autoridad para emitir tokens")
         else:
             if current.issuer != parent.subject:
                 return VerificationResult(False, "cadena de delegacion rota: emisor no es titular del padre")
