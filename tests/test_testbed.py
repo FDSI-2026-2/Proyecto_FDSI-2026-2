@@ -7,7 +7,7 @@ import pytest
 from trust_mas.config import DefenseConfig
 from trust_mas.testbed.analysis import analyze, bootstrap_ci, summary_markdown
 from trust_mas.testbed.attacks import ALL_ATTACKS, AdaptiveAdversary, make_strategy
-from trust_mas.testbed.episode import EpisodeConfig, run_episode
+from trust_mas.testbed.episode import Episode, EpisodeConfig, run_episode
 from trust_mas.testbed.experiment import GridSpec, run_grid
 from trust_mas.testbed.report import build_report
 from trust_mas.testbed.tasks import generate_task
@@ -146,14 +146,47 @@ def test_episodio_con_llm_real_simulado():
             return f"RESPUESTA: {self.truth} | CONFIANZA: 0.8. Lo calcule dos veces."
 
     cfg = EpisodeConfig(attack="A1", defense=FULL, seed=4, rounds=2)
-    from trust_mas.testbed.episode import Episode
-
     episode = Episode(cfg, llm=None)
     llm = EchoTruthLLM(episode.task.truth)
     result = Episode(cfg, llm=llm).run()
     assert llm.calls > 0
     assert result.final_answer == result.truth
     assert result.tokens_agents > 0
+
+
+def test_episodio_emite_eventos_y_difiere_el_ataque():
+    events: list[tuple[str, dict]] = []
+    cfg = EpisodeConfig(attack="A2", defense=FULL, seed=3, rounds=3, attack_start_round=1, trace=True)
+
+    Episode(cfg, event_sink=lambda event, payload: events.append((event, payload))).run()
+
+    messages = [payload for event, payload in events if event == "episode_message"]
+    infiltrator_rounds = [payload["round"] for payload in messages if payload["sender"] == "infiltrado_1"]
+    assert infiltrator_rounds and min(infiltrator_rounds) == 2
+    assert events[0][0] == "episode_started"
+    assert events[-1][0] == "episode_finished"
+
+
+def test_payload_manual_se_adjunta_en_la_ronda_elegida():
+    events: list[tuple[str, dict]] = []
+    cfg = EpisodeConfig(
+        attack="A1",
+        defense=FULL,
+        seed=3,
+        rounds=2,
+        manual_payload="[carga de prueba]",
+        manual_payload_round=1,
+        manual_payload_agent="infiltrado_1",
+    )
+
+    Episode(cfg, event_sink=lambda event, payload: events.append((event, payload))).run()
+
+    injected = [
+        payload
+        for event, payload in events
+        if event == "episode_message" and payload["sender"] == "infiltrado_1" and payload["round"] == 2
+    ]
+    assert injected and all("[carga de prueba]" in payload["body"] for payload in injected)
 
 
 # ------------------------------------------------------ experimento y análisis

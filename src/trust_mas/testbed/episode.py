@@ -39,8 +39,8 @@ import math
 import random
 import time
 from collections import Counter, defaultdict
-from dataclasses import asdict, dataclass, field
-from typing import Optional
+from dataclasses import asdict, dataclass, field, replace
+from typing import Callable, Optional
 
 from ..audit import AuditLog
 from ..bus import MessageBus, RoutingResult
@@ -95,6 +95,10 @@ class EpisodeConfig:
     seed: int = 0
     rounds: int = 5
     base_threshold: float = 0.5
+    attack_start_round: int = 0
+    manual_payload: Optional[str] = None
+    manual_payload_round: Optional[int] = None
+    manual_payload_agent: Optional[str] = None
     llm_defenses: bool = False  # juez y cuarentena como llamadas LLM (costo realista)
     trace: bool = False
 
@@ -197,9 +201,17 @@ def _sample_latency(rng: random.Random, mean_ms: float) -> float:
 
 
 class Episode:
-    def __init__(self, cfg: EpisodeConfig, llm: TextGenerator | None = None) -> None:
+    def __init__(
+        self,
+        cfg: EpisodeConfig,
+        llm: TextGenerator | None = None,
+        event_sink: Callable[[str, dict], None] | None = None,
+    ) -> None:
         self.cfg = cfg
         self.llm = llm
+        self._event_sink = event_sink
+        if not 0 <= cfg.attack_start_round < cfg.rounds:
+            raise ValueError("attack_start_round debe estar entre 0 y rounds - 1")
         # Pseudorandomness is intentional for reproducible simulations, not cryptography.
         self.rng = random.Random(cfg.seed)  # nosec B311
         self.profile: ModelProfile = get_profile(cfg.model)
@@ -229,6 +241,7 @@ class Episode:
             audit_log=AuditLog(),
             config=cfg.defense,
             quarantine_model=quarantine_model,
+            event_sink=self._emit,
         )
 
         strategies = dict(zip(self.malicious_ids, make_strategies(cfg.attack, len(self.malicious_ids))))
@@ -261,10 +274,7 @@ class Episode:
                 token = issue_capability_token(orch_kp, "orchestrator", agent_id, frozenset({"leer_documento"}), 0)
                 self.bus.register_capability_token(agent_id, token)
 
-        for agent in self.agents.values():
-            if agent.strategy is not None and agent.strategy.reads_poisoned_document:
-                # El runtime observa la lectura del documento envenenado.
-                self.bus.record_ingestion(agent.agent_id, tag_provenance(ProvenanceSource.EXTERNAL_DOC, POISONED_DOC))
+        self._poisoned_document_readers: set[str] = set()
 
         self.captured_answer: Optional[str] = None
         self.captured_by: Optional[str] = None
@@ -276,6 +286,15 @@ class Episode:
         self.n_messages = 0
         self.rounds_to_detection: Optional[int] = None
         self.trace: list[dict] = []
+
+    def _emit(self, event: str, payload: dict) -> None:
+        """Publica telemetría opcional; un consumidor no puede detener el episodio."""
+        if self._event_sink is None:
+            return
+        try:
+            self._event_sink(event, payload)
+        except Exception:
+            return
 
     # ----------------------------------------------------------------- setup
     def _private_signal(self) -> tuple[str, float]:
@@ -408,6 +427,23 @@ class Episode:
                 }
             )
 
+        self._emit(
+            "episode_message",
+            {
+                "round": round_index + 1,
+                "sender": agent.agent_id,
+                "declared_sender": sender_id,
+                "recipient": out.recipient,
+                "body": out.body,
+                "claim": out.claim,
+                "decision": result.decision.value,
+                "score": result.score,
+                "threshold": result.threshold,
+                "reasons": list(result.reasons),
+                "isolated": list(result.newly_isolated),
+            },
+        )
+
         self._apply(self.agents[out.recipient], sender_id, message, out, result, round_index)
         for isolated in result.newly_isolated:
             self._retract(isolated)
@@ -522,7 +558,18 @@ class Episode:
     # ------------------------------------------------------------------ run
     def run(self) -> EpisodeResult:
         cfg = self.cfg
+        self._emit(
+            "episode_started",
+            {
+                "topology": cfg.topology,
+                "attack": cfg.attack,
+                "rounds": cfg.rounds,
+                "malicious_ids": list(self.malicious_ids),
+                "truth": self.task.truth,
+            },
+        )
         for round_index in range(cfg.rounds):
+            self._emit("round_started", {"round": round_index + 1})
             digest = _digest(self.task, round_index)
             delivered: list[tuple[str, str, float]] = []
             for agent_id in self.topology.order:
@@ -541,7 +588,24 @@ class Episode:
                     )
                     if agent.strategy is None:
                         raise RuntimeError("un agente malicioso debe tener una estrategia")
-                    outgoing = agent.strategy.plan(ctx)
+                    if round_index < cfg.attack_start_round:
+                        outgoing = []
+                    else:
+                        if agent.strategy.reads_poisoned_document and agent_id not in self._poisoned_document_readers:
+                            self.bus.record_ingestion(
+                                agent_id, tag_provenance(ProvenanceSource.EXTERNAL_DOC, POISONED_DOC)
+                            )
+                            self._poisoned_document_readers.add(agent_id)
+                        outgoing = agent.strategy.plan(ctx)
+                    if (
+                        cfg.manual_payload
+                        and cfg.manual_payload_round == round_index
+                        and (cfg.manual_payload_agent is None or cfg.manual_payload_agent == agent_id)
+                    ):
+                        outgoing = [
+                            replace(out, body=f"{out.body}\n\n{cfg.manual_payload}", payload=cfg.manual_payload)
+                            for out in outgoing
+                        ]
                 else:
                     outgoing = self._honest_outgoing(agent, round_index)
 
@@ -565,8 +629,18 @@ class Episode:
             self._consistency_round(delivered)
             if self.rounds_to_detection is None and self._flagged() & set(self.malicious_ids):
                 self.rounds_to_detection = round_index + 1
+            self._emit(
+                "round_finished",
+                {
+                    "round": round_index + 1,
+                    "isolated": sorted(self.bus.isolated),
+                    "reputation": {agent_id: self.trust_engine.reputation.score(agent_id) for agent_id in self.agents},
+                },
+            )
 
-        return self._result()
+        result = self._result()
+        self._emit("episode_finished", {"result": result.to_row(), "audit_ok": result.audit_ok})
+        return result
 
     def _result(self) -> EpisodeResult:
         cfg = self.cfg
@@ -633,5 +707,5 @@ class Episode:
         )
 
 
-def run_episode(cfg: EpisodeConfig, llm=None) -> EpisodeResult:
-    return Episode(cfg, llm=llm).run()
+def run_episode(cfg: EpisodeConfig, llm=None, event_sink: Callable[[str, dict], None] | None = None) -> EpisodeResult:
+    return Episode(cfg, llm=llm, event_sink=event_sink).run()

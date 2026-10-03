@@ -13,7 +13,7 @@ from __future__ import annotations
 import threading
 import time
 from dataclasses import dataclass, field, replace
-from typing import Optional
+from typing import Callable, Optional
 
 from .audit import AuditLog
 from .config import DefenseConfig
@@ -27,6 +27,7 @@ from .trust import TrustEngine
 # cuarentena, ninguna de ellas puede sostenerse.
 DELIVERING_DECISIONS = (PolicyDecision.ACCEPT, PolicyDecision.DEGRADE)
 BLOCKING_DECISIONS = (PolicyDecision.QUARANTINE, PolicyDecision.REJECT)
+EventSink = Callable[[str, dict], None]
 
 
 @dataclass
@@ -68,6 +69,7 @@ class MessageBus:
         config: DefenseConfig | None = None,
         quarantine_model: QuarantineModel | None = None,
         remediation: RemediationPolicy | None = None,
+        event_sink: EventSink | None = None,
     ) -> None:
         self.registry = registry
         self.config = config or DefenseConfig()
@@ -83,6 +85,7 @@ class MessageBus:
         self._blocked_count: dict[str, int] = {}
         self.isolated: set[str] = set()
         self.remediation_events: list[RemediationEvent] = []
+        self._event_sink = event_sink
         self._lock = threading.RLock()
 
     # ------------------------------------------------------------------ API
@@ -154,7 +157,33 @@ class MessageBus:
         de auditoría) se actualiza bajo un lock.
         """
         with self._lock:
-            return self._route(message, expected_digest, channel_sender)
+            result = self._route(message, expected_digest, channel_sender)
+            self._emit_routing_event(message, result)
+            return result
+
+    def _emit_routing_event(self, message: Message, result: RoutingResult) -> None:
+        """Notifica el resultado sin permitir que un observador afecte la defensa."""
+        if self._event_sink is None:
+            return
+        payload = {
+            "sender": message.sender_id,
+            "recipient": message.recipient_id,
+            "body": message.body,
+            "action": message.action,
+            "provenance": message.provenance.source.value if message.provenance else None,
+            "decision": result.decision.value,
+            "score": result.score,
+            "threshold": result.threshold,
+            "reasons": list(result.reasons),
+            "isolated": list(result.newly_isolated),
+        }
+        try:
+            self._event_sink("message_routed", payload)
+            for agent_id in result.newly_isolated:
+                self._event_sink("agent_isolated", {"agent_id": agent_id, "reasons": list(result.reasons)})
+        except Exception:
+            # La observabilidad es secundaria: no puede cambiar una decisión de seguridad.
+            return
 
     def _route(
         self,
