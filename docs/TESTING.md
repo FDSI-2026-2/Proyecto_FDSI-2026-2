@@ -7,7 +7,7 @@ La suite sin red funciona con Python 3.11 o 3.12. Docker y los proveedores LLM s
 ```bash
 python -m venv .venv
 . .venv/bin/activate
-python -m pip install --only-binary=:all -r requirements-test.lock
+python -m pip install --only-binary=:all --require-hashes -r requirements-test.lock
 ```
 
 En PowerShell, activa el entorno con `.venv\Scripts\Activate.ps1`.
@@ -15,15 +15,15 @@ En PowerShell, activa el entorno con `.venv\Scripts\Activate.ps1`.
 Instala las herramientas de calidad solo si las vas a ejecutar localmente:
 
 ```bash
-python -m pip install --only-binary=:all -r requirements-dev.lock
+python -m pip install --only-binary=:all --require-hashes -r requirements-dev.lock
 ```
 
 Los proveedores son extras separados del nucleo:
 
 ```bash
-python -m pip install --only-binary=:all -r requirements-gemini.lock
+python -m pip install --only-binary=:all --require-hashes -r requirements-gemini.lock
 # o
-python -m pip install --only-binary=:all -r requirements-ollama.lock
+python -m pip install --only-binary=:all --require-hashes -r requirements-ollama.lock
 ```
 
 ## Pruebas
@@ -68,10 +68,11 @@ La CI ejecuta ademas Gitleaks, una matriz de pruebas para Python 3.11/3.12,
 Docker, Trivy y genera un SBOM CycloneDX de las dependencias resueltas.
 
 Los archivos `requirements-*.txt` declaran dependencias directas. Sus archivos
-`.lock` contienen el grafo resuelto para instalaciones automatizadas. Tras
-editar un manifiesto, regenera su lock con `pip-compile --strip-extras
---output-file requirements-NOMBRE.lock requirements-NOMBRE.txt` y verifica la
-suite antes de enviarlo.
+`.lock` contienen el grafo resuelto y sus hashes para instalaciones
+automatizadas. Tras editar un manifiesto, regenera su lock con
+`pip-compile --generate-hashes --strip-extras --output-file
+requirements-NOMBRE.lock requirements-NOMBRE.txt` usando Python 3.11 y
+verifica la suite antes de enviarlo.
 
 ## Docker
 

@@ -17,7 +17,7 @@
 
 ## Reproducibilidad y Operacion
 
-- Regenerar el archivo `.lock` correspondiente cuando se modifique un manifiesto de dependencias y revisar el diff de versiones resueltas.
+- Regenerar el archivo `.lock` con hashes correspondiente cuando se modifique un manifiesto de dependencias y revisar el diff de versiones resueltas.
 - Publicar artefactos de experimentos validados en una version o repositorio de datos con su manifiesto de ejecucion.
 - Anadir observabilidad externa (OpenTelemetry o Langfuse) si se requiere trazabilidad operativa mas alla del log local.
 - DVC no esta soportado. Si se requiere versionado de datos o artefactos, seleccionar y documentar una herramienta con un flujo mantenido y probado.

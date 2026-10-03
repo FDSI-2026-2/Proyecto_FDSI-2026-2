@@ -4,7 +4,7 @@
 #   docker run --rm trust-mas                                    # tests
 #   docker run --rm -v "$PWD/results:/app/results" trust-mas python run_experiment.py --preset completo
 #   docker run --rm -e GOOGLE_API_KEY trust-mas python demo_orchestrator.py
-FROM python:3.11-slim@sha256:da047cb8f9d1d98e5c070f5300ba9f7274e33b8fc0e5be5ed88740aed1b95ba9
+FROM python:3.11-slim@sha256:bab1b7ef4b450c81002278d035eff85ebe394ae94df904f7a3ba14f7e16e487b
 
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
@@ -12,7 +12,12 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 COPY --chown=root:root requirements-test.lock ./
-RUN python -m pip install --no-cache-dir --only-binary=:all -r requirements-test.lock
+RUN apt-get update && \
+    apt-get install --no-install-recommends -y libpcre2-8-0=10.46-1~deb13u3 && \
+    rm -rf /var/lib/apt/lists/* && \
+    python -m pip install --no-cache-dir --only-binary=:all \
+    pip==26.2 setuptools==84.0.0 wheel==0.48.0 && \
+    python -m pip install --no-cache-dir --only-binary=:all --require-hashes -r requirements-test.lock
 
 RUN groupadd --system trustmas && useradd --system --gid trustmas --create-home trustmas && \
     install --directory --owner=trustmas --group=trustmas /app/results

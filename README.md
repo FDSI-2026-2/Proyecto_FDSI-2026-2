@@ -408,14 +408,14 @@ python -m venv .venv
 . .venv/bin/activate
 
 # Núcleo y pruebas con versiones resueltas
-python -m pip install --only-binary=:all -r requirements-test.lock
+python -m pip install --only-binary=:all --require-hashes -r requirements-test.lock
 
 # Herramientas de calidad locales (opcional)
-python -m pip install --only-binary=:all -r requirements-dev.lock
+python -m pip install --only-binary=:all --require-hashes -r requirements-dev.lock
 
 # Un proveedor LLM, solo si se va a usar
-python -m pip install --only-binary=:all -r requirements-gemini.lock
-# o: python -m pip install --only-binary=:all -r requirements-ollama.lock
+python -m pip install --only-binary=:all --require-hashes -r requirements-gemini.lock
+# o: python -m pip install --only-binary=:all --require-hashes -r requirements-ollama.lock
 
 # Recorrido mensaje a mensaje con texto fijo (sin LLM)
 python demo.py
@@ -444,8 +444,8 @@ docker build -t trust-mas . && docker run --rm trust-mas
 Variables de entorno del LLM: `TRUSTMAS_LLM` (`gemini` | `ollama`),
 `GOOGLE_API_KEY`, `GEMINI_MODEL` (por defecto `gemini-2.0-flash`; cámbiala si
 ese modelo ya no está disponible), `OLLAMA_MODEL`, `OLLAMA_HOST`. Ollama
-requiere `pip install --only-binary=:all -r requirements-ollama.lock`; Gemini
-requiere `pip install --only-binary=:all -r requirements-gemini.lock` y
+requiere `pip install --only-binary=:all --require-hashes -r requirements-ollama.lock`; Gemini
+requiere `pip install --only-binary=:all --require-hashes -r requirements-gemini.lock` y
 `GOOGLE_API_KEY`.
 
 La guía de pruebas de código, uso, Ollama y SonarQube está en
