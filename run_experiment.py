@@ -29,10 +29,24 @@ from trust_mas.testbed.experiment import PRESETS, run_experiment  # noqa: E402
 from trust_mas.testbed.report import write_report  # noqa: E402
 
 
+def _output_dir(value: str) -> Path:
+    """Accept output paths only within the current working directory."""
+    root = Path.cwd().resolve()
+    candidate = Path(value)
+    if candidate.is_absolute():
+        raise argparse.ArgumentTypeError("--out debe ser una ruta relativa")
+    output = (root / candidate).resolve()
+    try:
+        output.relative_to(root)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("--out no puede salir del directorio de trabajo") from exc
+    return output
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description="Banco de pruebas TRUST-MAS")
     parser.add_argument("--preset", choices=sorted(PRESETS), default="rapido")
-    parser.add_argument("--out", type=Path, default=Path("results"))
+    parser.add_argument("--out", type=_output_dir, default=_output_dir("results"))
     parser.add_argument("--workers", type=int, default=None, help="procesos en paralelo (por defecto: nucleos - 1)")
     parser.add_argument(
         "--solo-analisis", action="store_true", help="no correr episodios; reanalizar los CSV existentes"

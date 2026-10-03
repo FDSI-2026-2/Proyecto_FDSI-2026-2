@@ -132,7 +132,7 @@ Mensaje:
 >>>"""
 
 _RISK_RE = re.compile(r"riesgo\s*:\s*([01](?:[.,]\d+)?)", re.IGNORECASE)
-_CATS_RE = re.compile(r"categorias\s*:\s*(.+)$", re.IGNORECASE)
+_CATS_RE = re.compile(r"categorias[ \t]*:[ \t]*([^\r\n]*)", re.IGNORECASE)
 
 
 def estimate_tokens(text: str) -> int:

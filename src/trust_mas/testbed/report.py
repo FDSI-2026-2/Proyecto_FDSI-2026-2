@@ -417,7 +417,8 @@ def build_report(analysis: Analysis, preset: str = "", n_episodes: Optional[int]
     )
 
     stamp = datetime.now().strftime("%Y-%m-%d %H:%M")
-    meta = f"Preset «{_e(preset)}» · {n_episodes or '?'} episodios del diseño factorial · generado {stamp}"
+    safe_preset = html.escape(preset, quote=True)
+    meta = f"Preset «{safe_preset}» · {n_episodes or '?'} episodios del diseño factorial · generado {stamp}"
     return f"""<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Resultados TRUST-MAS</title><style>{CSS}</style></head><body><main>
 <h1>Resultados del banco de pruebas TRUST-MAS</h1><p class="sub">{meta}. Perfiles de modelo simulados y calibrables: los valores miden el mecanismo, no a un LLM concreto.</p>

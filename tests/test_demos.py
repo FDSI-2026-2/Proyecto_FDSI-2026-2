@@ -31,3 +31,17 @@ def test_demo_orchestrator_sin_clave_falla_con_mensaje_claro():
     )
     assert completed.returncode != 0
     assert "GOOGLE_API_KEY" in completed.stderr
+
+
+def test_directorio_de_salida_no_puede_salir_del_directorio_de_trabajo(tmp_path):
+    for output in ("../fuera", "/tmp/fuera"):
+        completed = subprocess.run(
+            [sys.executable, str(ROOT / "run_experiment.py"), "--out", output],
+            cwd=tmp_path,
+            capture_output=True,
+            text=True,
+            encoding="utf-8",
+            timeout=60,
+        )
+        assert completed.returncode != 0
+        assert "--out" in completed.stderr

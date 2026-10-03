@@ -205,6 +205,9 @@ def test_analisis_y_panel_sobre_un_grid_pequeno():
     assert analysis.curve is not None and len(analysis.curve) == 2
     html = build_report(analysis, preset="test", n_episodes=len(df))
     assert "<svg" in html and "Metas de la propuesta" in html and "prefers-color-scheme:dark" in html
+    escaped_html = build_report(analysis, preset='<script>alert("xss")</script>')
+    assert '<script>alert("xss")</script>' not in escaped_html
+    assert "&lt;script&gt;alert(&quot;xss&quot;)&lt;/script&gt;" in escaped_html
     assert "Resumen de resultados" in summary_markdown(analysis)
 
 

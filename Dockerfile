@@ -11,14 +11,15 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONIOENCODING=utf-8
 
 WORKDIR /app
-COPY requirements.txt requirements-test.txt ./
-RUN pip install --no-cache-dir -r requirements-test.txt
+COPY --chown=root:root requirements-test.lock ./
+RUN python -m pip install --no-cache-dir --only-binary=:all -r requirements-test.lock
 
-RUN groupadd --system trustmas && useradd --system --gid trustmas --create-home trustmas && chown trustmas:trustmas /app
-COPY --chown=trustmas:trustmas src/ src/
-COPY --chown=trustmas:trustmas tests/ tests/
-COPY --chown=trustmas:trustmas docs/ docs/
-COPY --chown=trustmas:trustmas demo.py demo_escenas.py demo_orchestrator.py run_experiment.py README.md ./
+RUN groupadd --system trustmas && useradd --system --gid trustmas --create-home trustmas && \
+    install --directory --owner=trustmas --group=trustmas /app/results
+COPY --chown=root:root src/ src/
+COPY --chown=root:root tests/ tests/
+COPY --chown=root:root docs/ docs/
+COPY --chown=root:root demo.py demo_escenas.py demo_orchestrator.py run_experiment.py README.md ./
 
 USER trustmas
-CMD ["python", "-m", "pytest", "tests", "-q"]
+CMD ["python", "-m", "pytest", "tests", "-q", "-p", "no:cacheprovider"]
