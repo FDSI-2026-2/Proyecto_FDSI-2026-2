@@ -7,4 +7,4 @@ pip-audit>=2.9
 semgrep>=1.140
 pre-commit>=4.3
 cyclonedx-bom>=7.2
-pip-tools>=7.4
+pip-tools>=7.6.1
